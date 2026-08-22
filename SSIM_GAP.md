@@ -178,7 +178,8 @@ of why a single matching number is not evidence. Test enough aggregations and on
 ## What this rules out, and what remains open
 
 What this rules out with reasonable confidence: the colour space, the border handling, the uint8
-rounding, the SSIM constants, and ERR's implementation specifically. Also ruled out, both by the joint PSNR
+rounding, the SSIM constants, and ERR's implementation specifically. Also ruled out, both by the
+joint PSNR
 constraint: a downsampling step before scoring, and any exclusion, trimming or subset choice.
 
 What remains open: an SSIM implementation not among the nine tested, a checkpoint other than the

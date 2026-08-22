@@ -17,6 +17,7 @@
 
 ## The sweep
 
+Measured by [`scripts/measure_footprint.py`](scripts/measure_footprint.py), 5 groups of 5 iterations
 after 5 warmup passes, fp32:
 
 | Input | Padded | Mpix | CUDA-event median | Working set | GiB per Mpix | Reserved |
@@ -30,8 +31,22 @@ Latency and working set come from separate invocations (`--mode latency` and `--
 because they need opposite settings of `cudnn.benchmark` and contaminate each other in one
 process. Both are backed by [`results/footprint_latency.json`](results/footprint_latency.json) and
 [`results/footprint_memory.json`](results/footprint_memory.json), which `scripts/check_report.py`
-verifies this table against. Running both together cost about 1.5% on the 4K timing, which is larger than the
-group-to-group spread, so the script now warns when you do that.
+verifies this table against. Running both together cost about 1.5% on the 4K timing, which is
+larger than the group-to-group spread, so the script warns when you do that.
+
+Wall clock and CUDA-event timings agree to within 0.02% at every resolution, and group-to-group
+spread at 4K is under 1 ms out of 1348 ms. An earlier, separately written harness measured the same
+4K forward at 1347.89 ms, within 0.02% of the figure above.
+
+The harness is sanity-checked first, on the principle that something which cannot recover a known
+cost should not be trusted on an unknown one: an 8192-cubed fp16 matmul reaches 161.4 TFLOPS, in
+line with this card's specification.
+
+One caveat found while measuring, and the reason working set and reserved are reported separately.
+With `cudnn.benchmark = True`, peak *allocated* came out non-monotonic in resolution (15.64 GiB at
+1920x1152 against 15.28 GiB at 3840x2176), which cannot be a real working set. cuDNN's algorithm
+search allocates trial workspaces that land in the peak statistic, and it declines the larger ones
+once they stop fitting. Measured with benchmark off, the same sweep is linear to within 2%.
 
 ## Peak allocation is linear in pixel count
 
@@ -61,10 +76,11 @@ committed results.
 linearity breaks, so a future torch release that changes allocation behaviour cannot quietly
 falsify the claim.
 
-### What card do you actually need
+## What card do you actually need
 
 The working set at 4K is 10.94 GiB, but the allocator reserves far more than it allocates, and
-reserved is what decides whether the run fits. **One environment variable moves the answer by 8 GiB:**
+reserved is what decides whether the run fits. **One environment variable moves the answer by 8
+GiB:**
 
 | | reserved at 3840x2176 | ratio to working set | smallest card (derived) |
 |---|---|---|---|
@@ -93,7 +109,10 @@ Smaller inputs, with expandable segments, all measured: 2560x1408 reserves 5.04 
 reserves 3.11, and 1280x768 reserves 1.41. From those, an 8 GB card should handle everything up to
 about 3.6 Mpix, which is again a derivation rather than a measurement.
 
-### Where it stops working
+Backed by [`results/footprint_memory.json`](results/footprint_memory.json) and
+[`results/footprint_memory_expandable.json`](results/footprint_memory_expandable.json).
+
+## Where it stops working
 
 Stepping up in 128-row increments until it fails, rather than extrapolating:
 
@@ -122,21 +141,6 @@ card, which at 1.305 GiB per Mpix happens around 18 Mpix on 24 GB.
 
 Backed by [`results/ceiling_bracket_default.json`](results/ceiling_bracket_default.json) and
 [`results/ceiling_bracket_expandable.json`](results/ceiling_bracket_expandable.json).
-
-Backed by [`results/footprint_memory.json`](results/footprint_memory.json) and
-[`results/footprint_memory_expandable.json`](results/footprint_memory_expandable.json).
-
-Wall clock and CUDA-event timings agree to within 0.02% at every resolution, and group-to-group
-spread at 4K is under 1 ms out of 1348 ms. An earlier, separately written harness measured the
-same 4K forward at 1347.89 ms, within 0.02% of the figure above. Harness sanity check first, on the principle that something
-which cannot recover a known cost should not be trusted on an unknown one: an 8192-cubed fp16 matmul
-reaches 161.4 TFLOPS, in line with this card's specification.
-
-One caveat found while measuring, and the reason working set and reserved are reported separately.
-With `cudnn.benchmark = True`, peak *allocated* came out non-monotonic in resolution (15.64 GiB at
-1920x1152 against 15.28 GiB at 3840x2176), which cannot be a real working set. cuDNN's algorithm
-search allocates trial workspaces that land in the peak statistic, and it declines the larger ones
-once they stop fitting. Measured with benchmark off, the same sweep is linear to within 2%.
 
 ---
 

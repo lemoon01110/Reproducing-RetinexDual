@@ -31,7 +31,8 @@ numbers and the one failure.
 **This report**
 
 1. [What reproduces, and what does not](#1-what-reproduces-and-what-does-not)
-2. [Three defects that stop the released code from running](#2-three-defects-that-stop-the-released-code-from-running)
+2. [Three defects that stop the released code from
+running](#2-three-defects-that-stop-the-released-code-from-running)
 3. [Two traps that do not stop the code running](#3-two-traps-that-do-not-stop-the-code-running)
 4. [Two properties of the released artifacts](#4-two-properties-of-the-released-artifacts)
 5. [Environment](#5-environment)
@@ -63,7 +64,8 @@ Every number below is the mean over 5 independent seeds, each a full 150-image e
 | PSNR (dB) | 28.79 | **28.8199 +/- 0.0027** | **+0.030** |
 | SSIM | 0.934 | 0.92217 +/- 0.00002 | -0.0118 |
 
-![Per-image PSNR across the UHD-LL test set, and the per-seed spread against the published value](assets/reproduction.png)
+![Per-image PSNR across the UHD-LL test set, and the per-seed spread against the published
+value](assets/reproduction.png)
 
 Spread across seeds was 28.8173 to 28.8235. Per-image scores range from 16.74 dB to 40.33 dB, with
 a mean run-to-run standard deviation of 0.029 dB per image.
@@ -108,7 +110,8 @@ the detail crop inside each picked by gradient energy on the ground truth so the
 instead of flat wall. Regenerate with
 [`scripts/make_qualitative.py`](scripts/make_qualitative.py).
 
-![Worst, median and best case: low-light input, reproduction output, ground truth](assets/qualitative.png)
+![Worst, median and best case: low-light input, reproduction output, ground
+truth](assets/qualitative.png)
 
 The worst case at 16.74 dB is the useful one to look at. It is a fine metallic mesh, and the output
 is a plausible restoration that loses the exact phase of the weave rather than a broken image. That
@@ -297,7 +300,8 @@ zero to the numerator, which drags the reported average down.
 does not fire and it has no bearing on the paper's reported number. It bites when you point the
 script at a partial download, a subset or a folder with mismatched filenames, which is exactly what
 a reproducer does first. Because nothing warns you, a silently truncated Google
-Drive download produces a plausible-looking but deflated PSNR instead of an error. `scripts/evaluate.py` counts
+Drive download produces a plausible-looking but deflated PSNR instead of an error.
+`scripts/evaluate.py` counts
 only paired images and prints a warning when it finds unpaired ones.
 
 ---
@@ -465,7 +469,8 @@ because a truncated Drive download is the normal failure mode and section 3.2 ex
 turns into a plausible but wrong PSNR rather than an error.
 
 **Measured wall clock on a 4090: 7.0 minutes per seed, 35.1 minutes for the full five, at
-2.81 s per image**, recorded in [`results/timing.json`](results/timing.json). An earlier version of this section said "roughly 20 minutes per seed" from
+2.81 s per image**, recorded in [`results/timing.json`](results/timing.json). An earlier version
+of this section said "roughly 20 minutes per seed" from
 impression rather than measurement, and was wrong by a factor of three. The forward pass is about
 1.35 s of that 2.80 s, with the remainder mostly CPU-side SSIM at 3840x2160 and image IO, which is
 why `--skip-ssim` is worth having.

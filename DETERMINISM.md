@@ -63,7 +63,8 @@ python scripts/determinism_audit.py --repo ~/RetinexDual \
 
 Five real UHD-LL test images, sampled evenly across the split rather than taken from the front, each
 `1x3x2176x3840` after reflect-padding to a multiple of 128. Five forward passes per image, runs 2 to
-5 each compared against run 1. Full warmup first, `cudnn.benchmark=False` for the reason given below.
+5 each compared against run 1. Full warmup first, `cudnn.benchmark=False` for the reason given
+below.
 Deltas are on a [0, 1] image scale.
 
 | | Mode | RNG reset per forward | Outputs identical | Max pixel delta | Mean delta | Pairwise PSNR |
@@ -126,7 +127,8 @@ each forward makes the output bit-identical. It follows that:
   nondeterministic selective-scan reduction. Had any of those existed, experiment B would still have
   differed.
 
-Note the qualifier. Experiment B holds the convolution algorithm choice fixed, because it runs in one
+Note the qualifier. Experiment B holds the convolution algorithm choice fixed, because it runs in
+one
 process. It therefore says nothing about algorithm *selection*, which does vary between processes
 under `cudnn.benchmark` and is a second, far smaller source of variation. See the section above.
 

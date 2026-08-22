@@ -83,6 +83,15 @@ def check_structure():
             if prev.strip():
                 bad.append(f"{name}:{i + 1} heading directly follows body text, "
                            f"which usually means a sentence was cut: {prev.strip()[:60]}")
+            # The mirror image: a section opening mid-sentence, because the lead-in
+            # stayed behind in the document the text was moved out of. Found in
+            # FOOTPRINT.md, which began with "after 5 warmup passes, fp32:".
+            nxt = next((l for j, l in enumerate(lines[i + 1:], i + 1)
+                        if l.strip() and j not in fenced), "")
+            first = nxt.strip()
+            if (first and first[0].islower()
+                    and not first.startswith(("|", "#", ">", "-", "*", "`", "["))):
+                bad.append(f"{name}:{i + 1} section opens mid-sentence: {first[:60]}")
             elif i >= 2:
                 # A paragraph ending without terminal punctuation right before a
                 # heading is the signature of a truncated extraction.
