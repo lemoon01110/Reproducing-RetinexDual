@@ -25,11 +25,6 @@ import torch
 import torch.nn.functional as F
 
 
-# Measured across 11 points from 0.98 to 15.07 Mpix, R2 = 1.000000.
-# See README section 5 and scripts/check_report.py --scaling.
-GIB_PER_MPIX = 1.305
-
-
 def check_image_size(x, mult=128):
     _, _, h, w = x.size()
     return F.pad(x, (0, (mult - w % mult) % mult, 0, (mult - h % mult) % mult), "reflect")
@@ -136,9 +131,6 @@ def main():
     ap.add_argument("--groups", type=int, default=5)
     ap.add_argument("--iters", type=int, default=5)
     ap.add_argument("--warmup", type=int, default=5)
-    ap.add_argument("--find-limit", action="store_true",
-                    help="sweep past 4K until it OOMs, measuring the ceiling on this card "
-                         "instead of extrapolating")
     ap.add_argument("--sweep", action="store_true",
                     help="also measure smaller resolutions to show how peak memory scales")
     ap.add_argument("--out", default=None,
@@ -187,25 +179,6 @@ def main():
     resolutions = [(2160, 3840)]
     if args.sweep:
         resolutions = [(768, 1280), (1088, 1920), (1408, 2560), (2160, 3840)]
-    if args.find_limit:
-        # Bracket the ceiling on whatever card this is, rather than hardcoding
-        # resolutions chosen for a 24 GB one. Use the measured GiB-per-Mpix law to
-        # predict where the card runs out, then probe either side of it. On a
-        # smaller card the hardcoded list would have started above the ceiling and
-        # reported nothing but OOM.
-        predicted = (total * 0.97) / GIB_PER_MPIX
-        print(f"[limit] {total:.1f} GiB visible, law predicts the ceiling near "
-              f"{predicted:.1f} Mpix", flush=True)
-        resolutions = []
-        for frac in (0.55, 0.8, 1.0, 1.2, 1.6):
-            mpix = predicted * frac
-            # 16:9, rounded to a multiple of 128 so check_image_size does not
-            # silently change the pixel count being requested.
-            h = max(128, int(round((mpix * 1e6 / (16 / 9)) ** 0.5 / 128)) * 128)
-            w = max(128, int(round(h * (16 / 9) / 128)) * 128)
-            if (h, w) not in resolutions:
-                resolutions.append((h, w))
-
     rows = []
     for h, w in resolutions:
         print(f"[measure] {w}x{h}", flush=True)

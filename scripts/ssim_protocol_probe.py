@@ -135,6 +135,30 @@ def ssim_torch01(out, gt):
     return float(m.mean())
 
 
+def psnr_protocols(out, gt):
+    """PSNR under the same conventions, which constrains the protocol from the
+    other side.
+
+    This matters because PSNR *did* reproduce. Any protocol choice that would
+    move both metrics is therefore already ruled out by that agreement, and the
+    remaining explanation has to be something that moves SSIM while leaving PSNR
+    alone. Measuring PSNR per convention tells us which choices those are.
+    """
+    r = {}
+    o, g = out.astype(np.float64), gt.astype(np.float64)
+    mse = np.mean((o - g) ** 2)
+    r["psnr_rgb"] = 20 * np.log10(255.0 / np.sqrt(mse))
+
+    oy, gy = bgr2y(out), bgr2y(gt)
+    mse_y = np.mean((oy - gy) ** 2)
+    r["psnr_y"] = 20 * np.log10(255.0 / np.sqrt(mse_y))
+
+    oyb, gyb = bgr2y(crop(out, 1)), bgr2y(crop(gt, 1))
+    mse_yb = np.mean((oyb - gyb) ** 2)
+    r["psnr_y_border1"] = 20 * np.log10(255.0 / np.sqrt(mse_yb))
+    return r
+
+
 def crop(img, b):
     return img if b == 0 else img[b:-b, b:-b, ...]
 
@@ -172,6 +196,8 @@ def protocols(out, gt, fast=False, out_float=None):
 
     # ERR's other SSIM implementation: [0,1] constants, zero padding, per channel.
     r["torch_rgb_01"] = ssim_torch01(out, gt)
+
+    r.update(psnr_protocols(out, gt))
 
     # Scored before uint8 quantisation. Tests whether the published figure could
     # come from evaluating in float space rather than on saved images.
@@ -295,6 +321,17 @@ def main():
                        "protocols": {k: st.mean(v) for k, v in acc.items()}},
                       f, indent=2)
         print(f"[out] wrote {args.out}", flush=True)
+
+    psnr_keys = [k for k in acc if k.startswith("psnr_")]
+    if psnr_keys:
+        print("\nPSNR under the same conventions, which the SSIM discussion depends on:\n")
+        print("| protocol | PSNR (dB) | vs paper 28.79 |")
+        print("|---|---|---|")
+        for k in sorted(psnr_keys, key=lambda x: -st.mean(acc[x])):
+            m = st.mean(acc[k])
+            print(f"| `{k}` | {m:.4f} | {m - 28.79:+.4f} |")
+        for k in psnr_keys:
+            acc.pop(k)
 
     base = st.mean(acc["repo_rgb_mean"])
     partial = len(names) < args.full_n

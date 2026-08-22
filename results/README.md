@@ -139,8 +139,8 @@ Before they existed, those tables had no source of truth and went stale repeated
 | `qualitative_picks.json` | records which images `assets/qualitative.png` shows, and why | `scripts/make_qualitative.py --out-json` |
 | `timing.json` | the measured wall clock in README section 6 | `scripts/evaluate.py`, recorded in its summary |
 | `footprint_memory_expandable.json` | the allocator comparison in README section 5 | `measure_footprint.py --mode memory` under `expandable_segments` |
-| `ceiling_default.json` | the OOM boundary in README section 5 | `measure_footprint.py --find-limit` |
-| `ceiling_expandable.json` | the same boundary under `expandable_segments` | `measure_footprint.py --find-limit` |
+| `ceiling_bracket_default.json` | the OOM boundary in README section 5 | `scripts/find_ceiling.py --out` |
+| `ceiling_bracket_expandable.json` | the same boundary under `expandable_segments` | `scripts/find_ceiling.py --out` |
 
 How well each reproduces on a re-run, which is worth knowing before quoting one:
 
@@ -151,5 +151,5 @@ How well each reproduces on a re-run, which is worth knowing before quoting one:
   [`../DETERMINISM.md`](../DETERMINISM.md).
 - `ssim_protocols.json` reproduces to five decimals on every protocol.
 - `footprint_latency.json` moves by well under 1%, being a timing measurement.
-- `footprint_memory.json`, `ceiling_*.json` reproduce to within about 0.01 GiB. Allocation is
+- `footprint_memory.json`, `ceiling_bracket_*.json` reproduce to within about 0.01 GiB. Allocation is
   deterministic given the input size, so the residual is allocator bookkeeping rather than noise.
