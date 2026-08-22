@@ -148,6 +148,7 @@ Before they existed, those tables had no source of truth and went stale repeated
 | `glibc_audit.json` | the glibc floor table in README section 2.2, read from the wheels' ELF symbols | `scripts/verify_glibc.py --out` |
 | `scan_timing.json` | the selective-scan latency and reference intermediate sizes in README section 3.1 | `scripts/measure_scan.py` |
 | `cross_harness.json` | this evaluation against the authors' own script, README section 1 | `scripts/cross_harness.py --out` |
+| `cross_task.json` | the same-direction SSIM shortfall across three tasks, SSIM_GAP.md | `scripts/cross_task.py --out` |
 | `ceiling_bracket_default.json` | the OOM boundary in FOOTPRINT.md | `scripts/find_ceiling.py --out` |
 | `ceiling_bracket_expandable.json` | the same boundary under `expandable_segments` | `scripts/find_ceiling.py --out` |
 | `footprint_memory_expandable.json` | the allocator comparison in FOOTPRINT.md | `measure_footprint.py --mode memory` under `expandable_segments` |

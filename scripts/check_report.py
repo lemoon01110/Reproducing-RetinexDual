@@ -351,7 +351,11 @@ def check_tables():
         right = words.get(n_ssim, str(n_ssim))
         for name, text in read_docs():
             for i, line in enumerate(text.splitlines(), 1):
-                for m in re.finditer(r"\b(one|two|three|four|five|six|seven|eight|nine|ten|"
+                # Only counts of the whole set, not phrases like "the two
+                # conventions" meaning the two clusters. Require an article-free
+                # cardinal, which is how a total is written.
+                for m in re.finditer(r"(?<!the )(?<!those )(?<!both )"
+                                     r"\b(one|two|three|four|five|six|seven|eight|nine|ten|"
                                      r"eleven|twelve)\s+(?:SSIM\s+)?(?:conventions|protocols)\b",
                                      line, re.I):
                     if m.group(1).lower() != right:

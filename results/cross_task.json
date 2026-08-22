@@ -1,0 +1,35 @@
+{
+  "note": "One seed per task. SSIM run-to-run spread is 1.6e-5, so a single seed is sufficient. UHD-LL uses the 5-seed mean.",
+  "tasks": [
+    {
+      "task": "UHD-LL",
+      "n_images": 150,
+      "paper_psnr": 28.79,
+      "paper_ssim": 0.934,
+      "repro_psnr": 28.81991602840368,
+      "repro_ssim": 0.9221674639335988,
+      "psnr_delta": 0.029916028403679462,
+      "ssim_delta": -0.011832536066401222
+    },
+    {
+      "task": "UHD-Blur",
+      "n_images": 300,
+      "paper_psnr": 30.71,
+      "paper_ssim": 0.886,
+      "repro_psnr": 30.688889296285442,
+      "repro_ssim": 0.8799832634725662,
+      "psnr_delta": -0.02111070371455881,
+      "ssim_delta": -0.006016736527433841
+    },
+    {
+      "task": "UHD-Haze",
+      "n_images": 231,
+      "paper_psnr": 26.63,
+      "paper_ssim": 0.956,
+      "repro_psnr": 26.620413681556034,
+      "repro_ssim": 0.9516982616432593,
+      "psnr_delta": -0.00958631844396507,
+      "ssim_delta": -0.004301738356740636
+    }
+  ]
+}

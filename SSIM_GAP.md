@@ -15,6 +15,7 @@
 - [The result has a shape](#the-result-has-a-shape)
 - [ERR's protocol, the strongest candidate](#errs-protocol-the-strongest-candidate)
 - [The colour space is pinned by PSNR](#the-colour-space-is-pinned-by-psnr)
+- [The gap is systematic across tasks](#the-gap-is-systematic-across-tasks)
 - [Aggregation, and a tempting near-miss](#aggregation-and-a-tempting-near-miss)
 - [What this rules out, and what remains open](#what-this-rules-out-and-what-remains-open)
 - [Are the implementations themselves right](#are-the-implementations-themselves-right)
@@ -133,6 +134,44 @@ does not land on 0.934.
 
 This also disposes of one candidate I had left open. A downsampling step before scoring would move
 PSNR as well, and PSNR agrees to 0.03 dB, so there is no such step.
+
+## The gap is systematic across tasks
+
+The paper reports four tasks, not one, and RetinexDual released a checkpoint for each. That makes a
+sharper test available than any amount of re-reading one number: **run the other tasks and see
+whether the gap follows.**
+
+Two of the four have public test sets that could be obtained here. Each was evaluated with its own
+released checkpoint, one seed, since SSIM's run-to-run spread is 1.6e-5:
+
+| task | images | PSNR paper | PSNR here | difference | SSIM paper | SSIM here | difference |
+|---|---|---|---|---|---|---|---|
+| UHD-LL | 150 | 28.79 | 28.8199 | **+0.0299** | 0.934 | 0.92218 | **-0.01183** |
+| UHD-Blur | 300 | 30.71 | 30.6889 | **-0.0211** | 0.886 | 0.87998 | **-0.00602** |
+| UHD-Haze | 231 | 26.63 | 26.6204 | **-0.0096** | 0.956 | 0.95170 | **-0.00430** |
+
+**Every task reproduces on PSNR and comes out low on SSIM.** All three PSNR differences sit inside
+0.030 dB. All three SSIM differences are negative, ranging from 0.0043 to 0.0118.
+
+That is three independent checkpoints, three datasets, three image counts, and three published SSIM
+values spread from 0.886 to 0.956, so this is not a case where any offset would have looked similar.
+The direction never changes.
+
+What this settles:
+
+- **The gap is not specific to UHD-LL.** Anything about that split, that checkpoint, or that
+  particular published number is ruled out as the sole explanation.
+- **It is not a model difference.** PSNR reproduces on all three from the same outputs.
+- **The released repository's own `utils.calculate_ssim` did not produce the paper's SSIM column for
+  any task.** That is a stronger statement than the single-task result supported, and it is worth
+  stating plainly because the natural assumption for a reproducer is that the shipped helper is the
+  one that made the table.
+
+What it does not settle is which protocol did. The shortfall is not a constant, and it does not
+scale cleanly with `1 - SSIM` either, so a single fixed transformation between the two conventions
+is not obviously the answer.
+
+Backed by [`results/cross_task.json`](results/cross_task.json).
 
 ## Aggregation, and a tempting near-miss
 

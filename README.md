@@ -89,6 +89,14 @@ the two obvious ways to escape those families, multi-scale SSIM and scoring all 
 channels, overshoot to 0.961 and 0.977. ERR's protocol specifically, which upstream credits for this
 benchmark, lands within 0.0002 of plain luma.
 
+**The gap is not specific to this task.** RetinexDual released a checkpoint for each of four tasks,
+and two others have obtainable test sets. Evaluated with their own weights, UHD-Blur reads 30.6889
+against 30.71 and UHD-Haze 26.6204 against 26.63, so PSNR reproduces on all three. SSIM comes out
+low on all three, by 0.0060 and 0.0043 respectively against 0.0118 here. Three checkpoints, three
+datasets, three published SSIM values spread from 0.886 to 0.956, and the direction never changes.
+So the released repository's own `utils.calculate_ssim` did not produce the paper's SSIM column for
+any task, which is a stronger statement than the UHD-LL result alone supported.
+
 There is also a constraint from the PSNR side, which is the sharpest thing in that document. Luma
 PSNR measures 31.4077 here against 28.8191 for RGB, a 2.62 dB separation, so the paper's 28.79
 pins its PSNR to per-channel RGB. In RGB, SSIM measures 0.92218. In luma it would measure 0.94656.
@@ -635,6 +643,7 @@ tolerance is made impossible, which confirms the check is not vacuous).
 | [`scripts/test_metrics.py`](scripts/test_metrics.py) | pins the metric implementations against references |
 | [`scripts/test_aggregation.py`](scripts/test_aggregation.py) | tests whether aggregation explains the SSIM gap |
 | [`scripts/cross_harness.py`](scripts/cross_harness.py) | compares this evaluation against the authors' own inference script |
+| [`scripts/cross_task.py`](scripts/cross_task.py) | evaluates the other released tasks to test whether the SSIM gap follows |
 | [`scripts/check_report.py`](scripts/check_report.py) | guards links, structure, prose-vs-artifact numbers and conventions |
 
 **Figures**
