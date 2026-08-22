@@ -313,6 +313,8 @@ before anything runs.
 | [`reproduce.sh`](reproduce.sh) | checksums the weights, checks the data, runs the evaluation |
 | [`scripts/evaluate.py`](scripts/evaluate.py) | the evaluation itself, 5 seeds over 150 images |
 | [`scripts/check_data.py`](scripts/check_data.py) | dataset pairing, dimensions and decodability |
+| [`scripts/determinism_audit.py`](scripts/determinism_audit.py) | regenerates the table in section 4.2 |
+| [`scripts/measure_footprint.py`](scripts/measure_footprint.py) | regenerates the memory and latency table in section 5 |
 | [`scripts/make_figure.py`](scripts/make_figure.py) | renders the figure above from the committed CSVs |
 | `results/reproduction_seeds.csv` | 5 rows, dataset-level PSNR and SSIM per seed |
 | `results/reproduction_per_image.csv` | 150 rows, per-image mean and standard deviation |

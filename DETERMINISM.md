@@ -38,6 +38,12 @@ Note that `cls_policy` feeds two places, the `prompt` matmul on line 746 and the
 
 ## Experiment
 
+Regenerate this table with:
+
+```bash
+python scripts/determinism_audit.py --repo ~/RetinexDual --image <one UHD-LL input image>
+```
+
 Input `1x3x2176x3840`, which is 3840x2160 reflect-padded to a multiple of 128. Five forward passes
 of the same input, runs 2 to 5 each compared against run 1. Full warmup completed before both
 experiments, `cudnn.benchmark=True`.
