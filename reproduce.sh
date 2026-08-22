@@ -6,6 +6,9 @@
 # Expects the environment built by setup_env.sh to be active.
 set -euo pipefail
 
+# Strip a leading `--` so `bash reproduce.sh -- --limit 4` reads naturally.
+if [[ "${1:-}" == "--" ]]; then shift; fi
+
 REPO_DIR="${REPO_DIR:-$HOME/RetinexDual}"
 DATA_DIR="${DATA_DIR:-$HOME/data/UHD_LL/testing_set}"
 SEEDS="${SEEDS:-0 1 2 3 4}"
@@ -51,13 +54,20 @@ python "${HERE}/scripts/check_data.py" --data "${DATA_DIR}"
 
 echo
 echo "==> running the evaluation"
+# Anything after `--` on the command line, or in EXTRA_ARGS, is passed through to
+# evaluate.py. Use it for --limit and --skip-ssim when checking the plumbing:
+#   bash reproduce.sh -- --limit 4 --skip-ssim
+# Both flags label themselves in the output, so a truncated run cannot be
+# mistaken for a reproduction.
+EXTRA_ARGS="${EXTRA_ARGS:-}"
 # shellcheck disable=SC2086
 python "${HERE}/scripts/evaluate.py" \
   --repo "${REPO_DIR}" \
   --data "${DATA_DIR}" \
   --weights "${WEIGHTS}" \
   --seeds ${SEEDS} \
-  --out "${OUT_DIR}"
+  --out "${OUT_DIR}" \
+  ${EXTRA_ARGS} "$@"
 
 echo
 echo "Wrote:"

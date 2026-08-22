@@ -308,13 +308,17 @@ There is no `if self.training` guard anywhere on this path, so `model.eval()` an
 `torch.manual_seed(123)` once at import, which is not sufficient, because warmup passes and repeated
 iterations consume RNG state and successive forwards then route differently.
 
-Five forward passes of one input, runs 2 to 5 compared against run 1:
+Five real test images, five forward passes each, runs 2 to 5 compared against run 1:
 
 | Mode | RNG reset per forward | Identical | Max pixel delta | Pairwise PSNR |
 |---|---|---|---|---|
-| Natural inference, as released | no | **no** | 0.026 to 0.046 | 59.38 dB |
+| Natural inference, as released | no | **no** | 0.008 to 0.135 | 58.59 to 65.17 dB |
 | Exact RNG replay | yes | yes, bit-identical | 0.000 | inf |
 | Deterministic argmax routing | n/a | yes, bit-identical | 0.000 | inf |
+
+The verdict holds on every image tested, which matters because two earlier versions of this table
+rested on a single input and both overstated the spread. See
+[`DETERMINISM.md`](DETERMINISM.md).
 
 The RNG replay row is the decisive one. Restoring CPU and CUDA RNG state before each forward makes
 output bit-identical, which isolates the variation entirely to sampling in the routing path and

@@ -41,26 +41,41 @@ Note that `cls_policy` feeds two places, the `prompt` matmul on line 746 and the
 Regenerate this table with:
 
 ```bash
-python scripts/determinism_audit.py --repo ~/RetinexDual --image <one UHD-LL input image>
+python scripts/determinism_audit.py --repo ~/RetinexDual \
+    --image-dir <UHD-LL testing_set/input> --n-images 5
 ```
 
-Real UHD-LL test image `1003_UHD_LL.JPG`, which is `1x3x2176x3840` after reflect-padding to a
-multiple of 128. Five forward passes of the same input, runs 2 to 5 each compared against run 1.
-Full warmup completed first, `cudnn.benchmark=True`. Deltas are on a [0, 1] image scale.
+Five real UHD-LL test images, sampled evenly across the split rather than taken from the front, each
+`1x3x2176x3840` after reflect-padding to a multiple of 128. Five forward passes per image, runs 2 to
+5 each compared against run 1. Full warmup first, `cudnn.benchmark=True`. Deltas are on a [0, 1]
+image scale.
 
 | | Mode | RNG reset per forward | Outputs identical | Max pixel delta | Mean delta | Pairwise PSNR |
 |---|---|---|---|---|---|---|
-| **A** | Natural inference, as released | no | **no** | 0.026 to 0.046 | 7.11e-04 | **59.38 dB** |
+| **A** | Natural inference, as released | no | **no** | 0.008 to 0.135 | 4.95e-04 | **58.59 to 65.17 dB** |
 | **B** | Exact RNG replay | yes | **yes, bit-identical** | 0.000 | 0.000 | inf |
 | **C** | Deterministic argmax routing | n/a | **yes, bit-identical** | 0.000 | 0.000 | inf |
 
-**The choice of input matters, and an earlier version of this table overstated the effect.** These
-figures replace ones measured on a synthetic uniform-random 4K input, which gave a max delta of
-0.210 to 0.466 and a pairwise PSNR of 51.50 dB. Random noise carries no spatial structure for the
-router to respond to, so its routing decisions scatter more and the outputs diverge more. On real
-photographs the mean divergence is about three times smaller and the pairwise PSNR roughly 8 dB
-higher. The qualitative verdict is unchanged. The numbers above are the ones that describe actual
-use, and they are the less dramatic of the two.
+Per image, natural inference:
+
+| image | max delta | mean delta | pairwise PSNR |
+|---|---|---|---|
+| `1003_UHD_LL.JPG` | 0.1354 | 7.87e-04 | 58.59 dB |
+| `1453_UHD_LL.JPG` | 0.0249 | 3.94e-04 | 64.71 dB |
+| `1778_UHD_LL.JPG` | 0.0186 | 3.98e-04 | 65.17 dB |
+| `28_UHD_LL.JPG` | 0.0162 | 4.89e-04 | 62.88 dB |
+| `674_UHD_LL.JPG` | 0.0131 | 4.06e-04 | 64.23 dB |
+
+**Two earlier versions of this table were measured on a single input and both misrepresented the
+spread.** The first used synthetic uniform-random noise and reported a max delta of 0.210 to 0.466
+at 51.50 dB, far worse than any real image, because noise gives the router no spatial structure and
+its decisions scatter more. The second used `1003_UHD_LL.JPG` alone, which the per-image table above
+shows is the *most* variable of the five at 58.59 dB against 62.88 to 65.17 for the rest. Neither
+was wrong as a measurement. Both were a single point presented as a general claim.
+
+Note also that the max delta is itself stochastic, since the audit does not fix a seed. Repeated
+runs on the same image give different maxima. The stable quantities are the mean delta, around
+5e-04, and the identical or not verdict, which is what the argument actually rests on.
 
 ## Interpretation
 
@@ -75,16 +90,17 @@ each forward makes the output bit-identical. It follows that:
 Without experiment B, row A on its own is ambiguous, since nondeterministic reductions in a CUDA
 kernel would produce a similar-looking result for an entirely different reason.
 
-The perturbation is localised rather than spread evenly. Mean absolute delta is about 2.1e-3, which
-is sub-LSB on an 8-bit scale, while the maximum reaches 0.466, close to half the dynamic range on
-individual pixels.
+The perturbation is localised rather than spread evenly. Mean absolute delta is about 5e-04, well
+under one 8-bit level, while the maximum reaches 0.135 on the worst image, roughly 34 levels. So
+most pixels are untouched and a small number move a lot, which is what flipping a routing decision
+for a subset of tokens would do.
 
 ## What this means for reproduction
 
 1. **A single evaluation run is not a reproducible quantity.** Dataset-level PSNR is run-dependent.
    This is why [`README.md`](README.md) reports the mean over 5 independent seeds along with the
    spread, rather than a single number.
-2. Measured across 5 seeds on the full 150-image test set, dataset PSNR moves by **0.0042 dB**
+2. Measured across 5 seeds on the full 150-image test set, dataset PSNR moves by **0.0027 dB**
    standard deviation, and individual images move by **0.029 dB** on average. So the effect is
    small at dataset scale. Small is not zero, and any claimed improvement smaller than that spread
    is indistinguishable from noise.
