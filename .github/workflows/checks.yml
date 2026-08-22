@@ -57,9 +57,11 @@ jobs:
       - name: Prose numbers match the committed CSVs
         run: python scripts/check_report.py --numbers
 
-      - name: Determinism and footprint tables match their artifacts
-        # These two tables went stale three separate times during writing,
-        # because unlike the reproduction they had no committed source of truth.
+      - name: Measured tables match their artifacts
+        # Determinism, footprint and SSIM. These went stale repeatedly during
+        # writing, because unlike the reproduction they had no committed source
+        # of truth. Covers ENVIRONMENT.md as well as README.md, since the two
+        # restate the same figures and drifted apart independently.
         run: python scripts/check_report.py --tables
 
       - name: Writing conventions

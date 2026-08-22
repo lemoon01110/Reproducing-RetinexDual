@@ -24,6 +24,19 @@ Section 1 covers what I tested on the SSIM gap, what it ruled out, and what rema
 Upstream: [ErrorLogic1211/RetinexDual](https://github.com/ErrorLogic1211/RetinexDual) at commit
 `9feec2c0814d740221db2323e5e815a4d455abb6`.
 
+**If you read one section:** [2, the three defects](#2-three-defects-that-stop-the-released-code-from-running)
+is the part that would have saved someone a day. [1](#1-what-reproduces-and-what-does-not) has the
+numbers and the one failure.
+
+1. [What reproduces, and what does not](#1-what-reproduces-and-what-does-not)
+2. [Three defects that stop the released code from running](#2-three-defects-that-stop-the-released-code-from-running)
+3. [Two traps that do not stop the code running](#3-two-traps-that-do-not-stop-the-code-running)
+4. [Two properties of the released artifacts](#4-two-properties-of-the-released-artifacts)
+5. [Environment](#5-environment)
+6. [Reproducing this](#6-reproducing-this)
+7. [Scope, and what this is not](#7-scope-and-what-this-is-not)
+8. [Files](#8-files)
+
 ---
 
 ## 1. What reproduces, and what does not
@@ -74,7 +87,9 @@ the three that differ:
 | `repo_rgb_mean` (what this repo reports) | 0.92218 | 0.00000 | **-0.01182** |
 
 All 150 images, one seed. SSIM's run-to-run spread is 0.000016, so a single seed is sufficient here
-in a way it is not for PSNR.
+in a way it is not for PSNR. Backed by
+[`results/ssim_protocols.json`](results/ssim_protocols.json), which `scripts/check_report.py`
+verifies this table against. A re-run reproduced all three figures to five decimals.
 
 **The hypothesis fails, and the gap stays open.** No convention tested lands on 0.934. The published
 value falls *between* per-channel RGB and luma, roughly 0.012 from each, so it is not simply that

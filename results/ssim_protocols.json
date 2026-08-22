@@ -1,0 +1,11 @@
+{
+  "n_images": 150,
+  "seed": 0,
+  "target": 0.934,
+  "fast": true,
+  "protocols": {
+    "repo_rgb_mean": 0.922175526301452,
+    "matlab_y": 0.9465603726001024,
+    "matlab_y_border4": 0.9465160792582548
+  }
+}

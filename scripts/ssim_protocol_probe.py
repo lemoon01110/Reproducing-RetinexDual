@@ -16,6 +16,7 @@ Usage:
   python scripts/ssim_protocol_probe.py --repo ~/RetinexDual --data <testing_set>
 """
 import argparse
+import json
 import os
 import statistics as st
 import sys
@@ -106,6 +107,9 @@ def main():
     ap.add_argument("--target", type=float, default=0.934)
     ap.add_argument("--full-n", type=int, default=150,
                     help="size of the full test set, used to detect a partial run")
+    ap.add_argument("--out", default=None,
+                    help="write a JSON artifact so the published table has a "
+                         "machine-checkable source of truth")
     ap.add_argument("--fast", action="store_true",
                     help="only the three protocols that differ meaningfully, roughly 3x faster")
     args = ap.parse_args()
@@ -159,6 +163,14 @@ def main():
             acc.setdefault(key, []).append(val)
         if (k + 1) % 10 == 0:
             print(f"  {k + 1}/{len(names)}", flush=True)
+
+    if args.out:
+        with open(args.out, "w") as f:
+            json.dump({"n_images": len(names), "seed": args.seed, "target": args.target,
+                       "fast": bool(args.fast),
+                       "protocols": {k: st.mean(v) for k, v in acc.items()}},
+                      f, indent=2)
+        print(f"[out] wrote {args.out}", flush=True)
 
     base = st.mean(acc["repo_rgb_mean"])
     partial = len(names) < args.full_n

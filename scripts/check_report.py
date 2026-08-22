@@ -178,6 +178,8 @@ def check_tables():
             if row not in det_md:
                 problems.append(f"DETERMINISM.md per-image row for {img} does not match the artifact")
 
+    env_md = (ROOT / "ENVIRONMENT.md").read_text()
+
     for tag, fname in (("latency", "footprint_latency.json"), ("memory", "footprint_memory.json")):
         fp = ROOT / "results" / fname
         if not fp.exists():
@@ -187,15 +189,32 @@ def check_tables():
         big = [r for r in f["rows"] if not r["oom"]][-1]
         if tag == "latency":
             v = f"{big['event_median']:.2f} ms"
-            if v not in readme:
-                problems.append(f"README does not state the 4K latency '{v}'")
             r = f"{big['peak_reserved_bench']:.2f} GiB"
-            if r not in readme:
-                problems.append(f"README does not state the 4K reserved memory '{r}'")
+            # ENVIRONMENT.md restates both and had no guard, so it drifted
+            # independently of the README more than once.
+            for doc, name in ((readme, "README.md"), (env_md, "ENVIRONMENT.md")):
+                if v not in doc:
+                    problems.append(f"{name} does not state the 4K latency '{v}'")
+                if r not in doc:
+                    problems.append(f"{name} does not state the 4K reserved memory '{r}'")
         else:
             v = f"{big['peak_alloc']:.2f} GiB"
+            for doc, name in ((readme, "README.md"), (env_md, "ENVIRONMENT.md")):
+                if v not in doc:
+                    problems.append(f"{name} does not state the 4K working set '{v}'")
+
+    ssim_p = ROOT / "results" / "ssim_protocols.json"
+    if not ssim_p.exists():
+        problems.append("results/ssim_protocols.json missing")
+    else:
+        sj = json.loads(ssim_p.read_text())
+        for proto, val in sj["protocols"].items():
+            v = f"{val:.5f}"
             if v not in readme:
-                problems.append(f"README does not state the 4K working set '{v}'")
+                problems.append(f"README does not state SSIM {v} for protocol '{proto}'")
+        if sj["n_images"] < 150:
+            problems.append(f"ssim_protocols.json is a partial run ({sj['n_images']} images). "
+                            f"The published table must come from the full set.")
 
     for p in problems:
         print(f"  FAIL {p}")
