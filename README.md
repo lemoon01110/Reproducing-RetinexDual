@@ -65,6 +65,22 @@ authors.
 Raw data: [`results/reproduction_seeds.csv`](results/reproduction_seeds.csv) (5 rows, one per seed)
 and [`results/reproduction_per_image.csv`](results/reproduction_per_image.csv) (150 rows).
 
+### What the outputs actually look like
+
+A reproduction that reports only scalars is hard to check. Below are the worst, median and best
+scoring images in the test set, chosen **by rank from the per-image CSV rather than by eye**, with
+the detail crop inside each picked by gradient energy on the ground truth so the panels show texture
+instead of flat wall. Regenerate with
+[`scripts/make_qualitative.py`](scripts/make_qualitative.py).
+
+![Worst, median and best case: low-light input, reproduction output, ground truth](assets/qualitative.png)
+
+The worst case at 16.74 dB is the useful one to look at. It is a fine metallic mesh, and the output
+is a plausible restoration that loses the exact phase of the weave rather than a broken image. That
+is the failure mode you would expect from a hard high-frequency texture, and it is evidence the
+16.74 dB is the benchmark being hard rather than the reproduction being wrong. At the median the
+text and QR code are legible and close to ground truth.
+
 ### Metric protocol
 
 Stated explicitly, because PSNR is only comparable when the protocol is:
@@ -392,7 +408,9 @@ python scripts/make_figure.py                                                   
 | [`scripts/check_data.py`](scripts/check_data.py) | dataset pairing, dimensions and decodability |
 | [`scripts/determinism_audit.py`](scripts/determinism_audit.py) | regenerates the table in section 4.2 |
 | [`scripts/measure_footprint.py`](scripts/measure_footprint.py) | regenerates the memory and latency table in section 5 |
-| [`scripts/make_figure.py`](scripts/make_figure.py) | renders the figure above from the committed CSVs |
+| [`scripts/make_figure.py`](scripts/make_figure.py) | renders the PSNR figure from the committed CSVs |
+| [`scripts/make_qualitative.py`](scripts/make_qualitative.py) | renders the worst/median/best image strip |
+| [`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) | scores outputs under six SSIM conventions |
 | `results/reproduction_seeds.csv` | 5 rows, dataset-level PSNR and SSIM per seed |
 | `results/reproduction_per_image.csv` | 150 rows, per-image mean and standard deviation |
 | [`results/README.md`](results/README.md) | provenance and column meanings for both CSVs |
