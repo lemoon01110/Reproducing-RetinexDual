@@ -17,7 +17,8 @@ import numpy as np
 
 sys.path.insert(0, __file__.rsplit("/", 1)[0])
 from ssim_protocol_probe import (  # noqa: E402
-    bgr2y, bgr2y_float, bgr2ycbcr_full, crop, ssim_err_cly, ssim_matlab, ssim_torch01,
+    MSSSIM_WEIGHTS, bgr2y, bgr2y_float, bgr2ycbcr_full, crop, ms_ssim,
+    ssim_err_cly, ssim_matlab, ssim_torch01,
 )
 
 FAILED = []
@@ -96,6 +97,26 @@ def main():
     check("crop(x, 0) is a no-op", crop(a, 0).shape == a.shape)
     check("crop(x, 4) removes 8 rows and columns", crop(a, 4).shape == (42, 52, 3),
           f"got {crop(a, 4).shape}")
+
+    print("\nMS-SSIM")
+    a, b = rand_pair(h=256, w=256, seed=8)
+    # The canonical weights from Wang et al. 2003 sum to 1.0001, not 1.0, because
+    # the paper publishes them rounded to four decimals. Standard implementations
+    # use them unnormalised, so this one does too. The effect is an exponent of
+    # 1.0001 instead of 1, worth about 5e-6 on a value near 0.95.
+    check("weights match the published values, summing to 1.0001",
+          abs(sum(MSSSIM_WEIGHTS) - 1.0001) < 1e-9,
+          f"got {sum(MSSSIM_WEIGHTS):.9f}")
+    check("five scales", len(MSSSIM_WEIGHTS) == 5)
+    ident = ms_ssim(a, a, channels=3)
+    check("ms_ssim(x, x) == 1", abs(ident - 1.0) < 1e-4, f"got {ident:.9f}")
+    # MS-SSIM pools contrast and structure across scales and drops luminance at
+    # all but the coarsest, so it scores a noisy pair above single-scale SSIM.
+    ms = ms_ssim(a, b, channels=3)
+    ss = float(np.mean([ssim_matlab(a[:, :, i], b[:, :, i]) for i in range(3)]))
+    check("scores above single-scale SSIM on a noisy pair", ms > ss,
+          f"ms-ssim {ms:.5f} ssim {ss:.5f}")
+    check("stays within [0, 1]", 0.0 <= ms <= 1.0, f"got {ms:.5f}")
 
     print("\nOrdering the argument depends on: luma scores above per-channel RGB")
     # The report's central claim is that these form two separated clusters. If

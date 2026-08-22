@@ -31,14 +31,16 @@ MATLAB-style 11x11 Gaussian, while other common choices score luma only, crop a 
 scikit-image's 7x7 uniform default. Measured here, those choices differ from each other by 0.024,
 which is twice the gap being explained, so the hypothesis was worth taking seriously.
 
-## Nine conventions, measured
+## Ten conventions, measured
 
-[`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) tests exactly this, scoring one
-set of model outputs under nine conventions over all 150 images:
+[`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) scores one set of model outputs
+under ten SSIM conventions over all 150 images:
 
 | protocol | SSIM | vs repo helper | vs paper |
 |---|---|---|---|
 | `ycbcr_mean` (per channel over Y, Cb, Cr) | 0.97731 | +0.05514 | +0.04331 |
+| `msssim_y` (multi-scale, luma) | 0.97639 | +0.05421 | +0.04239 |
+| `msssim_rgb` (multi-scale, per channel) | 0.96132 | +0.03914 | +0.02732 |
 | `matlab_y_float` (luma, before uint8 rounding) | 0.94688 | +0.02471 | +0.01288 |
 | `err_y_cly` (**ERR's own protocol**, luma, replicate border) | 0.94662 | +0.02444 | +0.01262 |
 | `matlab_y` (luma, 11x11 Gaussian) | 0.94656 | +0.02438 | **+0.01256** |
@@ -55,15 +57,21 @@ verifies this table against.
 ## The result has a shape
 
 **The hypothesis fails, and it fails in a specific and informative way.** The conventions do not
-spread out smoothly. They fall into two tight clusters:
+spread out smoothly. Three sit below the published value and seven above it, and the nearest on
+either side leaves a gap:
 
-- **RGB-like**, three protocols spanning 0.92218 to 0.92311, a spread of 0.0009
-- **luma-like**, four protocols spanning 0.94652 to 0.94688, a spread of 0.0004
+- highest result below 0.934 is `matlab_rgb_float` at **0.92311**, short by 0.0109
+- lowest result above 0.934 is `matlab_y_border4` at **0.94652**, over by 0.0125
 
-Between them is an empty band **0.0234 wide**, and the published 0.934 sits almost exactly in the
-middle of it, 46% of the way across. It is 0.0109 above the highest RGB result and 0.0125 below the
-lowest luma one. So this is not a case of having guessed the wrong convention from a continuum.
-Whatever produced 0.934 is not any member of either family.
+**No protocol lands within 0.0109 of the published value**, and the band around it is 0.0234 wide
+and empty. Underneath, the ten split into two tight families: RGB-like from 0.92218 to 0.92311, a
+spread of 0.0009, and luma-like from 0.94652 to 0.94688, a spread of 0.0004. Everything else scores
+higher still.
+
+This matters because it changes what kind of answer is possible. If the conventions formed a
+continuum, missing by 0.012 would just mean I had not found the right one yet. They do not. Whatever
+produced 0.934 is not a member of either family, and the two obvious ways to leave a family, scoring
+multi-scale or scoring all three YCbCr channels, both overshoot rather than landing in the gap.
 
 ## ERR's protocol, the strongest candidate
 

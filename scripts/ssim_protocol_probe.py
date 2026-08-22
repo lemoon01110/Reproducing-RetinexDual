@@ -159,6 +159,62 @@ def psnr_protocols(out, gt):
     return r
 
 
+# Standard MS-SSIM scale weights from Wang, Simoncelli and Bovik 2003.
+MSSSIM_WEIGHTS = (0.0448, 0.2856, 0.3001, 0.2363, 0.1333)
+
+
+def _ssim_maps(a, b, w, C1, C2, groups):
+    """Return (luminance, contrast*structure) maps for one scale."""
+    import torch.nn.functional as Fn
+    mu1 = Fn.conv2d(a, w, groups=groups)
+    mu2 = Fn.conv2d(b, w, groups=groups)
+    mu1_sq, mu2_sq, mu1_mu2 = mu1 ** 2, mu2 ** 2, mu1 * mu2
+    s1 = Fn.conv2d(a * a, w, groups=groups) - mu1_sq
+    s2 = Fn.conv2d(b * b, w, groups=groups) - mu2_sq
+    s12 = Fn.conv2d(a * b, w, groups=groups) - mu1_mu2
+    lum = (2 * mu1_mu2 + C1) / (mu1_sq + mu2_sq + C1)
+    cs = (2 * s12 + C2) / (s1 + s2 + C2)
+    return lum, cs
+
+
+def ms_ssim(out, gt, channels=3):
+    """Multi-scale SSIM, five scales, standard weights.
+
+    Worth testing because the clustering result says the published value does not
+    lie inside either single-scale family, and MS-SSIM is a structurally
+    different metric rather than another padding or colour-space variant. Papers
+    in this area do sometimes report it in a column labelled simply "SSIM".
+
+    out, gt are uint8 BGR. channels=1 scores luma only.
+    """
+    import torch
+    import torch.nn.functional as Fn
+
+    k = cv2.getGaussianKernel(11, 1.5)
+    w = torch.from_numpy(np.outer(k, k.T)).float().expand(channels, 1, 11, 11).contiguous()
+    C1, C2 = (0.01 * 255) ** 2, (0.03 * 255) ** 2
+
+    def to_t(img):
+        if channels == 1:
+            return torch.from_numpy(bgr2y(img)).float().unsqueeze(0).unsqueeze(0)
+        return torch.from_numpy(img.astype(np.float32)).permute(2, 0, 1).unsqueeze(0)
+
+    a, b = to_t(out), to_t(gt)
+    vals = []
+    for i, weight in enumerate(MSSSIM_WEIGHTS):
+        lum, cs = _ssim_maps(a, b, w, C1, C2, channels)
+        if i == len(MSSSIM_WEIGHTS) - 1:
+            vals.append(float((lum * cs).mean()) ** weight)
+        else:
+            vals.append(float(cs.mean()) ** weight)
+            a = Fn.avg_pool2d(a, 2)
+            b = Fn.avg_pool2d(b, 2)
+    out_val = 1.0
+    for v in vals:
+        out_val *= v
+    return out_val
+
+
 def crop(img, b):
     return img if b == 0 else img[b:-b, b:-b, ...]
 
@@ -196,6 +252,10 @@ def protocols(out, gt, fast=False, out_float=None):
 
     # ERR's other SSIM implementation: [0,1] constants, zero padding, per channel.
     r["torch_rgb_01"] = ssim_torch01(out, gt)
+
+    # A structurally different metric, not another single-scale variant.
+    r["msssim_rgb"] = ms_ssim(out, gt, channels=3)
+    r["msssim_y"] = ms_ssim(out, gt, channels=1)
 
     r.update(psnr_protocols(out, gt))
 

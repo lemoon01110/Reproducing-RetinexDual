@@ -7,7 +7,7 @@ An independent reproduction of **RetinexDual** (Kishawy, Hussein and Chen, ICPR 
 
 The badge covers internal consistency only, not the measurements. See section 7.
 
-The paper's headline PSNR reproduces. Its SSIM does not, and after testing nine SSIM conventions
+The paper's headline PSNR reproduces. Its SSIM does not, and after testing ten SSIM conventions
 against it I still cannot account for the difference. Getting to either number took working around
 three undocumented defects in the released repository, each of which stops a clean checkout from
 running at all, plus two further traps that do not stop it running and instead hand you a number
@@ -69,11 +69,12 @@ run-to-run spread, so this is a real difference and not noise.
 
 The obvious explanation is that "SSIM" names a family rather than one number, and the two papers
 picked different members of it. I tested that, hard, and it does not hold.
-[`SSIM_GAP.md`](SSIM_GAP.md) has the full investigation. In short, nine conventions measured over
-all 150 images fall into two tight clusters, RGB-like around 0.922 and luma-like around 0.947, with
-an empty band 0.0234 wide between them. **The published 0.934 sits 46% of the way across that band,
-near neither.** ERR's protocol specifically, which upstream credits for this benchmark, lands within
-0.0002 of plain luma.
+[`SSIM_GAP.md`](SSIM_GAP.md) has the full investigation. In short, ten conventions measured over all
+150 images leave an empty band 0.0234 wide around the published value. **No protocol lands within
+0.0109 of 0.934.** They cluster instead into RGB-like around 0.922 and luma-like around 0.947, and
+the two obvious ways to escape those families, multi-scale SSIM and scoring all three YCbCr
+channels, overshoot to 0.961 and 0.977. ERR's protocol specifically, which upstream credits for this
+benchmark, lands within 0.0002 of plain luma.
 
 There is also a constraint from the PSNR side, which is the sharpest thing in that document. Luma
 PSNR measures 31.4077 here against 28.8191 for RGB, a 2.62 dB separation, so the paper's 28.79
@@ -630,7 +631,7 @@ tolerance is made impossible, which confirms the check is not vacuous).
 | [`scripts/verify_defects.py`](scripts/verify_defects.py) | re-tests every claimed defect against the live upstream repository |
 | [`scripts/check_report.py`](scripts/check_report.py) | guards links, prose-vs-artifact numbers, figure provenance, and writing conventions |
 | [`CITATION.cff`](CITATION.cff) | citation metadata, with the RetinexDual paper listed as the work reproduced |
-| [`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) | scores outputs under nine SSIM and three PSNR conventions |
+| [`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) | scores outputs under ten SSIM and three PSNR conventions |
 | [`scripts/test_aggregation.py`](scripts/test_aggregation.py) | tests whether aggregation choices explain the SSIM gap |
 | [`scripts/test_metrics.py`](scripts/test_metrics.py) | pins the metric implementations against reference implementations |
 | `results/reproduction_seeds.csv` | 5 rows, dataset-level PSNR and SSIM per seed |
