@@ -77,11 +77,20 @@ pip install --quiet "${CCONV_WHL}"
 pip install --quiet "${MAMBA_WHL}"
 
 echo "==> installing the remaining runtime dependencies"
-# mamba_ssm's top-level __init__ imports transformers, even though only
-# selective_scan_interface is used here.
+# transformers is pinned, and the pin is load-bearing. mamba_ssm's top-level
+# __init__ imports MambaLMHeadModel, which reaches transformers.generation for
+# GreedySearchDecoderOnlyOutput. That name was removed in transformers 5.x, so
+# an unpinned install resolves to 5.x and every `import mamba_ssm` then fails:
+#
+#   ImportError: cannot import name 'GreedySearchDecoderOnlyOutput'
+#               from 'transformers.generation'
+#
+# 4.52.4 is exactly what upstream's requirements.txt pins. That file cannot be
+# installed as a whole (see README section 2), but this particular pin was doing
+# real work and dropping it breaks the build. Only torch needed to move.
 pip install --quiet \
   "numpy" "opencv-python==4.10.0.84" "scikit_image==0.25.1" "einops==0.8.1" \
-  "timm==1.0.15" "lpips==0.1.4" "torchmetrics" "transformers" \
+  "timm==1.0.15" "lpips==0.1.4" "torchmetrics" "transformers==4.52.4" \
   "natsort==8.4.0" "PyYAML==6.0.2" "tqdm==4.67.1" "lmdb==1.4.1" "yacs==0.1.8" \
   "addict" "future" "requests" "scipy"
 

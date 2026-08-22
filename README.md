@@ -146,6 +146,23 @@ top out at torch 2.6, having been built in December 2024, before PyTorch 2.7 exi
 So the pinned set has no solution. Any environment built by following the README either silently
 lacks the Mamba kernels or fails outright.
 
+**The right lesson is narrower than "ignore their pins," and I learned it the hard way.** Building
+this repository's `setup_env.sh` I dropped the pin on `transformers` while fixing the torch
+conflict. That breaks the build, though not until the very last step:
+
+```
+ImportError: cannot import name 'GreedySearchDecoderOnlyOutput'
+             from 'transformers.generation'
+```
+
+`mamba_ssm`'s top-level `__init__` imports `MambaLMHeadModel`, which reaches into
+`transformers.generation` for a name that **transformers 5.x removed**. Unpinned, pip resolves to
+5.x and every `import mamba_ssm` fails. Upstream pins `transformers==4.52.4`, which works.
+
+So exactly one line of that `requirements.txt` is impossible and the rest are load-bearing. The fix
+is to move torch and change nothing else, not to treat the file as untrustworthy. This one cost a
+full environment rebuild to find, because nothing fails until the kernels are first imported.
+
 ### 2.2 The obvious fix fails on any glibc older than 2.32
 
 The natural response is to keep torch 2.7.1 and bump the kernels to their first torch 2.7 builds,

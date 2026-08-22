@@ -75,6 +75,13 @@ Maximum required glibc symbol, measured per wheel rather than assumed:
 **Resolution: pin torch to 2.6.0 and use the repository's exact pinned kernel versions.** This keeps
 `mamba_ssm` and `causal_conv1d` byte-identical to the authors' intent and moves only torch.
 
+**Move only torch. The other pins are load-bearing.** Relaxing `transformers` while fixing the torch
+conflict breaks the build at the last step, because `mamba_ssm`'s top-level `__init__` imports
+`MambaLMHeadModel`, which reaches `transformers.generation` for `GreedySearchDecoderOnlyOutput`, a
+name removed in transformers 5.x. Unpinned, pip resolves to 5.x and `import mamba_ssm` fails.
+Upstream's `transformers==4.52.4` is correct and `setup_env.sh` keeps it. Verified by rebuilding the
+environment from scratch.
+
 That substitution was checked empirically rather than argued from version numbers. After install,
 `selective_scan_fn` (CUDA) agrees with `selective_scan_ref` (pure PyTorch) to a maximum absolute
 difference of 3.8e-6, and the full reproduction lands within 0.030 dB of the published PSNR.
