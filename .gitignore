@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Upstream checkout, weights and dataset are fetched, never vendored here.
+RetinexDual/
+pretrained_weights/
+*.pth
+datasets/
+data/
+
+# Local run output. The committed CSVs in results/ are the recorded reproduction.
+results/logs/
+results/*.jsonl
+out/
+*.log
