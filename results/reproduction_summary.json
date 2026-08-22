@@ -1,0 +1,13 @@
+{
+  "n_seeds": 5,
+  "n_images": 150,
+  "psnr_reported": 28.79,
+  "psnr_mean": 28.81991602840368,
+  "psnr_sd": 0.002678224086347707,
+  "psnr_min": 28.81727262067002,
+  "psnr_max": 28.823541514325136,
+  "ssim_reported": 0.934,
+  "ssim_mean": 0.9221674639335988,
+  "torch": "2.6.0+cu124",
+  "gpu": "NVIDIA GeForce RTX 4090"
+}

@@ -2,18 +2,18 @@
 
 ## Provenance
 
-These two files are the recorded reproduction reported in [`../README.md`](../README.md) section 1.
+These files are the recorded reproduction reported in [`../README.md`](../README.md) section 1.
 
-They were produced on the machine described in [`../ENVIRONMENT.md`](../ENVIRONMENT.md) on
-2026-08-09, running the released inference path with released `UHD_LL.pth` weights over all 150
-UHD-LL testing pairs, once per seed, for seeds 0 through 4.
+They were produced by [`../scripts/evaluate.py`](../scripts/evaluate.py), the script shipped in this
+repository, on the machine described in [`../ENVIRONMENT.md`](../ENVIRONMENT.md). Released
+`UHD_LL.pth` weights, released inference path, unmodified routing, all 150 UHD-LL testing pairs,
+once per seed for seeds 0 through 4.
 
-One point of provenance worth stating plainly. These rows were extracted from a larger routing
-experiment that swept several substitutions for the token routing path. The rows kept here are the
-arm in which **both the permutation and the prompt are the released learned ones**, which is to say
-the unmodified released configuration. No routing substitution is applied in any row of these files.
-`scripts/evaluate.py`, shipped in this repo, runs that same configuration directly and is the
-supported way to regenerate them.
+Regenerate with:
+
+```bash
+REPO_DIR=~/RetinexDual DATA_DIR=~/data/UHD_LL/testing_set bash ../reproduce.sh
+```
 
 ## Files
 
@@ -37,21 +37,53 @@ Five rows, one per seed. Dataset-level means over 150 images.
 | `image` | filename in the UHD-LL testing set |
 | `n_seeds` | seeds contributing, 5 in every row |
 | `psnr_mean_db` | mean PSNR for this image across seeds |
-| `psnr_sd_db` | standard deviation across seeds, which is nonzero because inference is stochastic |
+| `psnr_sd_db` | standard deviation across seeds, nonzero because inference is stochastic |
 | `ssim_mean` | mean SSIM for this image across seeds |
+
+### `reproduction_summary.json`
+
+Machine-readable summary, including the torch version and GPU the run was made on.
 
 ## Summary
 
 | quantity | value |
 |---|---|
-| PSNR, mean over seeds | 28.8236 dB |
-| PSNR, standard deviation over seeds | 0.0042 dB |
-| PSNR, range over seeds | 28.8180 to 28.8287 dB |
+| PSNR, mean over seeds | 28.8199 dB |
+| PSNR, standard deviation over seeds | 0.0027 dB |
+| PSNR, range over seeds | 28.8173 to 28.8235 dB |
 | PSNR reported in the paper | 28.79 dB |
+| **PSNR difference** | **+0.030 dB** |
 | SSIM, mean over seeds | 0.92217 |
+| SSIM, standard deviation over seeds | 0.000016 |
 | SSIM reported in the paper | 0.934 |
-| per-image PSNR range | 16.73 to 40.33 dB |
+| **SSIM difference** | **-0.0118** |
+| per-image PSNR range | 16.74 to 40.33 dB |
 | mean per-image run-to-run standard deviation | 0.029 dB |
 
-The `psnr_sd_db` column is the reason this reproduction reports a spread rather than a single
-number. See [`../DETERMINISM.md`](../DETERMINISM.md).
+The `psnr_sd_db` column is why this reproduction reports a spread rather than a single number.
+See [`../DETERMINISM.md`](../DETERMINISM.md).
+
+## Cross-check against a second harness
+
+These numbers were produced a second time by a separately written evaluation harness, built earlier
+for a different experiment. It shares no code with `evaluate.py` beyond the repository's own
+`calculate_psnr`, and it drives the model through a different call path, so it consumes the RNG
+stream differently. Since routing is stochastic, that is a genuinely independent sample of the
+released behaviour rather than a rerun of the same one.
+
+| harness | seeds | mean PSNR | sd | range |
+|---|---|---|---|---|
+| `scripts/evaluate.py` (this repo) | 5 | 28.8199 | 0.0027 | 28.8173 to 28.8235 |
+| separate earlier harness | 5 | 28.8236 | 0.0042 | 28.8180 to 28.8287 |
+
+The means differ by 0.0036 dB. Welch's t-test on the two sets of seed-level means gives
+**t = -1.63, p = 0.15**, so the difference is not statistically significant and the two harnesses
+agree. Both also sit on the same side of the published value, about +0.03 dB.
+
+This is worth stating because it rules out a specific failure mode. A reproduction that matches
+only under the exact harness that produced it is weak evidence. Two independent implementations
+landing in the same place is stronger.
+
+One caveat, stated rather than buried: the second harness is not included in this repository, so
+this row cannot be regenerated from what is published here. Only the first row can. It is recorded
+as supporting context, not as a headline result.

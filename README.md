@@ -10,8 +10,8 @@ and instead hand you a number that is quietly wrong.
 
 | | Reported | Reproduced | |
 |---|---|---|---|
-| **PSNR** | 28.79 dB | **28.8236 +/- 0.0042 dB** | reproduces, +0.034 dB |
-| **SSIM** | 0.934 | 0.92217 +/- 0.00001 | **does not reproduce, -0.012** |
+| **PSNR** | 28.79 dB | **28.8199 +/- 0.0027 dB** | reproduces, +0.030 dB |
+| **SSIM** | 0.934 | 0.92217 +/- 0.00002 | **does not reproduce, -0.012** |
 
 Both halves are here, the confirmation and the failure, with the raw per-image data behind them.
 Section 1 covers what I checked on the SSIM gap and what I did not.
@@ -31,26 +31,26 @@ Every number below is the mean over 5 independent seeds, each a full 150-image e
 
 | Metric | Reported | Reproduced | Difference |
 |---|---|---|---|
-| PSNR (dB) | 28.79 | **28.8236 +/- 0.0042** | **+0.034** |
-| SSIM | 0.934 | 0.92217 +/- 0.00001 | -0.012 |
+| PSNR (dB) | 28.79 | **28.8199 +/- 0.0027** | **+0.030** |
+| SSIM | 0.934 | 0.92217 +/- 0.00002 | -0.0118 |
 
 ![Per-image PSNR across the UHD-LL test set, and the per-seed spread against the published value](assets/reproduction.png)
 
-Spread across seeds was 28.8180 to 28.8287. Per-image scores range from 16.73 dB to 40.33 dB, with
+Spread across seeds was 28.8173 to 28.8235. Per-image scores range from 16.74 dB to 40.33 dB, with
 a mean run-to-run standard deviation of 0.029 dB per image.
 
-The right panel is the useful one. All five seeds sit inside a 0.011 dB band, roughly a third of the
-0.034 dB gap to the published value, so the reproduction is comfortably tighter than the quantity it
-is being compared against. The left panel is a reminder that a dataset mean hides a lot: individual
+The right panel is the useful one. All five seeds sit inside a 0.006 dB band, about a fifth of the
+0.030 dB gap to the published value, so the reproduction is far tighter than the quantity it is
+being compared against. The left panel is a reminder that a dataset mean hides a lot: individual
 images span more than 23 dB.
 
-PSNR lands 0.034 dB above the published value, which is well inside what counts as a match.
+PSNR lands 0.030 dB above the published value, which is well inside what counts as a match.
 
-**SSIM does not reproduce.** It comes out 0.012 low, which is far outside the 0.00001 run-to-run
-spread, so this is a real difference and not noise.
+**SSIM does not reproduce.** It comes out 0.0118 low, which is roughly 700 times the 0.000016
+run-to-run spread, so this is a real difference and not noise.
 
 The leading hypothesis is that it is a difference in how SSIM is defined rather than in what the
-model produced, because **PSNR matches to 0.034 dB on the exact same output images**. A model that
+model produced, because **PSNR matches to 0.030 dB on the exact same output images**. A model that
 was genuinely producing worse restorations would be expected to miss on both. "SSIM" also names a
 family rather than one number: the repository's helper averages per-channel SSIM over RGB with a
 MATLAB-style 11x11 Gaussian, while other common choices score luma only, crop a border, or use
@@ -128,7 +128,7 @@ pinned, which is the smaller deviation of the two available.
 The check that backs this is empirical rather than an argument about version numbers. After
 install, `selective_scan_fn` (CUDA) agrees with `selective_scan_ref` (the pure PyTorch reference) to
 a maximum absolute difference of **3.8e-6**, and the end-to-end reproduction in section 1 lands
-within 0.034 dB of the published PSNR. `setup_env.sh` runs that kernel comparison as an assertion,
+within 0.030 dB of the published PSNR. `setup_env.sh` runs that kernel comparison as an assertion,
 so a mismatched wheel fails at setup rather than silently producing wrong numbers.
 
 ### 2.3 The documented install command fails
