@@ -408,8 +408,8 @@ process. Both are backed by [`results/footprint_latency.json`](results/footprint
 verifies this table against. Running both together cost about 1.5% on the 4K timing, which is larger than the
 group-to-group spread, so the script now warns when you do that.
 
-Peak allocation is linear in pixel count. Fitting every measurement in
-[`results/`](results/), 11 points spanning 0.98 to 15.07 Mpix, a 15x range:
+Peak allocation is linear in pixel count. Fitting every memory measurement in
+[`results/`](results/), 19 points spanning 0.98 to 16.91 Mpix, a 17x range:
 
 ```
 peak allocated (GiB) = 1.305 x Mpix + 0.029      R2 = 1.000000
@@ -460,28 +460,33 @@ and 1280x768 needs 1.41. So an 8 GB card handles everything up to about 3.6 Mpix
 
 ### Where it stops working
 
-Pushing past 4K until it fails, rather than extrapolating:
+Stepping up in 128-row increments until it fails, rather than extrapolating:
 
-| Input | Padded | Mpix | Working set | Result |
+| allocator | largest input that runs | allocated | reserved | first failure |
 |---|---|---|---|---|
-| 3840x2160 | 3840x2176 | 8.36 | 10.94 GiB | runs |
-| 5120x2880 | 5120x2944 | 15.07 | **19.70 GiB** | **runs** |
-| 6016x3384 | | 20.36 | | **OOM** |
-| 7680x4320 | | 33.18 | | OOM |
+| default | 5248x2944, 15.45 Mpix | 20.19 GiB | 22.03 GiB | 16.91 Mpix |
+| `expandable_segments:True` | **5504x3072, 16.91 Mpix** | 22.09 GiB | 22.44 GiB | 18.02 Mpix |
 
-**5K runs on a 24 GB card. 6K does not.** The 1.31 GiB per Mpix law predicts the 5K working set as
-19.74 GiB against 19.70 measured, an error of 0.2%, so the law extrapolates well and the OOM
-threshold it implies for a 24 GB card, about 17.9 Mpix, sits exactly between the largest input that
-runs and the smallest that fails.
+**An earlier version of this section said expandable segments do not move the ceiling. That was
+wrong.** They raise it by about 9% in pixel count, from between 15.45 and 16.91 Mpix to between
+16.91 and 18.02. The error came from probing at 20.36 and 33.18 Mpix, which sit above *both*
+ceilings, so both returned OOM and the difference was invisible. Two points that agree tell you
+nothing if both are outside the range where the effect lives. `scripts/find_ceiling.py` now walks
+the boundary in 128-row steps for exactly this reason.
 
-Expandable segments make no difference to this ceiling, and that is the point worth taking away.
-They fix *fragmentation*, which is why they save 8 GiB at 4K where the working set fits with room to
-spare. At 6K the working set alone would be about 26.7 GiB, more than the card holds, so no
-allocator strategy helps. Reserved memory is the constraint at 4K, allocated memory is the
-constraint at the ceiling, and they want different fixes.
+The mechanism is visible in the reserved column. Under the default allocator, reserved pins at
+roughly 22 GiB from 11.8 Mpix upward and barely moves (22.46, 22.03, 22.30, 22.03), because it is
+already saturating the card with fragmented segments. Under expandable segments reserved tracks
+allocated within **0.35 GiB** at the ceiling against **1.84 GiB** for the default. That recovered
+headroom is what buys the extra resolution.
 
-Backed by [`results/ceiling_default.json`](results/ceiling_default.json) and
-[`results/ceiling_expandable.json`](results/ceiling_expandable.json).
+So the corrected statement: **the allocator setting matters twice.** At 4K it saves 8 GiB of
+reserved memory and moves the requirement from a 24 GB card to a 16 GB one. At the ceiling it buys
+about one more resolution step. What it cannot do is help once the working set alone exceeds the
+card, which at 1.305 GiB per Mpix happens around 18 Mpix on 24 GB.
+
+Backed by [`results/ceiling_bracket_default.json`](results/ceiling_bracket_default.json) and
+[`results/ceiling_bracket_expandable.json`](results/ceiling_bracket_expandable.json).
 
 Backed by [`results/footprint_memory.json`](results/footprint_memory.json) and
 [`results/footprint_memory_expandable.json`](results/footprint_memory_expandable.json).
@@ -599,7 +604,7 @@ by whether the claim is a property of the model or of the machine it ran on.
 | Memory law, 1.305 GiB per Mpix | **yes** | measured on two GPUs, two architectures |
 | Latency, 1347.73 ms at 4K | **no** | RTX 4090 at 2700 MHz. Expect this to scale with the card |
 | The 8 GiB allocator saving | **partly** | the mechanism is general, the size of the saving depends on how the working set lands relative to segment boundaries |
-| 5K runs, 6K does not | **no** | this is 24 GB divided by the memory law. Use the law with your own capacity |
+| The ceiling near 17 Mpix | **no** | this is 24 GB divided by the memory law. Use the law with your own capacity |
 
 The determinism *verdict* travels. The determinism *max delta* does not even reproduce on the same
 card, for the reason given in [`DETERMINISM.md`](DETERMINISM.md).

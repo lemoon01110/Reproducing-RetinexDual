@@ -294,15 +294,23 @@ def check_scaling():
     import json
     problems = []
     pts = set()
-    for fname in ("footprint_memory.json", "footprint_memory_expandable.json",
-                  "ceiling_default.json", "ceiling_expandable.json"):
-        fp = ROOT / "results" / fname
-        if not fp.exists():
+    for fp in sorted((ROOT / "results").glob("*.json")):
+        try:
+            data = json.loads(fp.read_text())
+        except (ValueError, OSError):
             continue
-        for r in json.loads(fp.read_text())["rows"]:
+        for r in data.get("rows", []):
             if r.get("oom") or "peak_alloc" not in r:
                 continue
-            mpix = (r["padded"][2] * r["padded"][3]) / 1e6
+            # measure_footprint records the padded shape, find_ceiling records
+            # Mpix directly. Accept either so every memory measurement in the
+            # repository contributes to the fit.
+            if "padded" in r:
+                mpix = (r["padded"][2] * r["padded"][3]) / 1e6
+            elif "mpix" in r:
+                mpix = r["mpix"]
+            else:
+                continue
             pts.add((round(mpix, 4), round(r["peak_alloc"], 4)))
 
     if len(pts) < 4:

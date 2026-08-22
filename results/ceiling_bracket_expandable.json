@@ -1,0 +1,61 @@
+{
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "total_gib": 23.5076904296875,
+  "allocator": "expandable_segments:True",
+  "torch": "2.6.0+cu124",
+  "rows": [
+    {
+      "w": 4608,
+      "h": 2560,
+      "mpix": 11.79648,
+      "oom": false,
+      "peak_alloc": 15.42037582397461,
+      "peak_reserved": 16.287109375,
+      "overhead": 0.8667335510253906
+    },
+    {
+      "w": 4736,
+      "h": 2688,
+      "mpix": 12.730368,
+      "oom": false,
+      "peak_alloc": 16.639114379882812,
+      "peak_reserved": 17.615234375,
+      "overhead": 0.9761199951171875
+    },
+    {
+      "w": 4992,
+      "h": 2816,
+      "mpix": 14.057472,
+      "oom": false,
+      "peak_alloc": 18.37100601196289,
+      "peak_reserved": 19.626953125,
+      "overhead": 1.2559471130371094
+    },
+    {
+      "w": 5248,
+      "h": 2944,
+      "mpix": 15.450112,
+      "oom": false,
+      "peak_alloc": 20.18842315673828,
+      "peak_reserved": 21.365234375,
+      "overhead": 1.1768112182617188
+    },
+    {
+      "w": 5504,
+      "h": 3072,
+      "mpix": 16.908288,
+      "oom": false,
+      "peak_alloc": 22.091365814208984,
+      "peak_reserved": 22.439453125,
+      "overhead": 0.3480873107910156
+    },
+    {
+      "w": 5632,
+      "h": 3200,
+      "mpix": 18.0224,
+      "oom": true
+    }
+  ],
+  "last_ok_mpix": 16.908288,
+  "first_fail_mpix": 18.0224
+}
