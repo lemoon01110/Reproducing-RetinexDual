@@ -28,8 +28,15 @@ Every number below is the mean over 5 independent seeds, each a full 150-image e
 | PSNR (dB) | 28.79 | **28.8236 +/- 0.0042** | **+0.034** |
 | SSIM | 0.934 | 0.92217 +/- 0.00001 | -0.012 |
 
+![Per-image PSNR across the UHD-LL test set, and the per-seed spread against the published value](assets/reproduction.png)
+
 Spread across seeds was 28.8180 to 28.8287. Per-image scores range from 16.73 dB to 40.33 dB, with
 a mean run-to-run standard deviation of 0.029 dB per image.
+
+The right panel is the useful one. All five seeds sit inside a 0.011 dB band, roughly a third of the
+0.034 dB gap to the published value, so the reproduction is comfortably tighter than the quantity it
+is being compared against. The left panel is a reminder that a dataset mean hides a lot: individual
+images span more than 23 dB.
 
 PSNR lands 0.034 dB above the published value, which is well inside what counts as a match. **The
 SSIM gap of 0.012 does not reproduce and I could not explain it.** The most likely cause is a
@@ -306,8 +313,10 @@ before anything runs.
 | [`reproduce.sh`](reproduce.sh) | checksums the weights, checks the data, runs the evaluation |
 | [`scripts/evaluate.py`](scripts/evaluate.py) | the evaluation itself, 5 seeds over 150 images |
 | [`scripts/check_data.py`](scripts/check_data.py) | dataset pairing, dimensions and decodability |
+| [`scripts/make_figure.py`](scripts/make_figure.py) | renders the figure above from the committed CSVs |
 | `results/reproduction_seeds.csv` | 5 rows, dataset-level PSNR and SSIM per seed |
 | `results/reproduction_per_image.csv` | 150 rows, per-image mean and standard deviation |
+| [`results/README.md`](results/README.md) | provenance and column meanings for both CSVs |
 
 ## Citation
 
