@@ -58,16 +58,36 @@ def sanity_check():
 
 
 def measure(model, h, w, groups, iters, warmup):
-    torch.cuda.empty_cache()
-    torch.cuda.reset_peak_memory_stats()
     x = check_image_size(torch.rand(1, 3, h, w, device="cuda"))
 
+    # Memory is measured with cudnn.benchmark OFF, in its own pass.
+    #
+    # With benchmark ON, cuDNN trials many convolution algorithms and their
+    # scratch buffers land in max_memory_allocated, so the figure reflects the
+    # algorithm search rather than the model's working set. That is not a
+    # hypothetical: measured with benchmark ON, peak allocated came out
+    # non-monotonic in resolution (15.64 GiB at 1920x1152 against 15.28 GiB at
+    # 3840x2176), which cannot be a real working set. cuDNN simply declines the
+    # larger workspaces once they stop fitting.
+    prev = torch.backends.cudnn.benchmark
+    torch.backends.cudnn.benchmark = False
+    torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
+    forward_once(model, x)
+    torch.cuda.synchronize()
+    peak_alloc = torch.cuda.max_memory_allocated() / 2 ** 30
+    peak_resv = torch.cuda.max_memory_reserved() / 2 ** 30
+    torch.backends.cudnn.benchmark = prev
+
+    # Latency is measured with benchmark ON, which is the configuration the
+    # reproduction actually runs under.
+    torch.cuda.empty_cache()
     for _ in range(warmup):
         forward_once(model, x)
     torch.cuda.synchronize()
 
-    peak_alloc = torch.cuda.max_memory_allocated() / 2 ** 30
-    peak_resv = torch.cuda.max_memory_reserved() / 2 ** 30
+    peak_alloc_bench = torch.cuda.max_memory_allocated() / 2 ** 30
+    peak_resv_bench = torch.cuda.max_memory_reserved() / 2 ** 30
 
     group_medians, wall_all = [], []
     for _ in range(groups):
@@ -90,6 +110,8 @@ def measure(model, h, w, groups, iters, warmup):
         "wall_median": st.median(wall_all),
         "peak_alloc": peak_alloc,
         "peak_reserved": peak_resv,
+        "peak_alloc_bench": peak_alloc_bench,
+        "peak_reserved_bench": peak_resv_bench,
     }
 
 
@@ -157,7 +179,9 @@ def main():
 
     print(f"\n{gpu}, torch {torch.__version__}, fp32, cudnn.benchmark=True")
     print(f"{args.groups} groups x {args.iters} iterations, {args.warmup} warmup\n")
-    print("| Input | Padded | Mpix | CUDA-event median | Wall median | Peak allocated | Peak reserved |")
+    print("Peak allocated is measured with cudnn.benchmark OFF (the model's working set).")
+    print("Latency is measured with cudnn.benchmark ON. See the note in measure().\n")
+    print("| Input | Padded | Mpix | CUDA-event median | Wall median | Peak allocated | Reserved (benchmark on) |")
     print("|---|---|---|---|---|---|---|")
     for h, w, r in rows:
         if r is None:
@@ -166,18 +190,20 @@ def main():
         ph, pw = r["padded"][2], r["padded"][3]
         print(f"| {w}x{h} | {pw}x{ph} | {(ph * pw) / 1e6:.2f} | "
               f"**{r['event_median']:.2f} ms** | {r['wall_median']:.2f} ms | "
-              f"**{r['peak_alloc']:.2f} GiB** | {r['peak_reserved']:.2f} GiB |")
+              f"**{r['peak_alloc']:.2f} GiB** | {r['peak_reserved_bench']:.2f} GiB |")
 
     ok = [(h, w, r) for h, w, r in rows if r]
     if ok:
         print()
         for h, w, r in ok:
             ph, pw = r["padded"][2], r["padded"][3]
-            print(f"{pw}x{ph}: {r['peak_alloc'] / ((ph * pw) / 1e6):.3f} GiB per Mpix, "
+            print(f"{pw}x{ph}: {r['peak_alloc'] / ((ph * pw) / 1e6):.3f} GiB per Mpix working set, "
                   f"group-to-group spread {r['group_spread']:.2f} ms, "
                   f"wall vs event {abs(r['wall_median'] - r['event_median']) / r['event_median'] * 100:.2f}%")
         big = ok[-1][2]
-        print(f"\nA card with less than {big['peak_reserved']:.0f} GiB will not hold this workload.")
+        print(f"\nWorking set at the largest resolution: {big['peak_alloc']:.2f} GiB allocated.")
+        print(f"With cudnn.benchmark on, the allocator reserves {big['peak_reserved_bench']:.2f} GiB, "
+              f"which is the figure that decides whether a card holds this workload.")
 
 
 if __name__ == "__main__":

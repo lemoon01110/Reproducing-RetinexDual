@@ -248,7 +248,7 @@ Five forward passes of one input, runs 2 to 5 compared against run 1:
 
 | Mode | RNG reset per forward | Identical | Max pixel delta | Pairwise PSNR |
 |---|---|---|---|---|
-| Natural inference, as released | no | **no** | 0.210 to 0.466 | 51.50 dB |
+| Natural inference, as released | no | **no** | 0.026 to 0.046 | 59.38 dB |
 | Exact RNG replay | yes | yes, bit-identical | 0.000 | inf |
 | Deterministic argmax routing | n/a | yes, bit-identical | 0.000 | inf |
 
@@ -282,11 +282,29 @@ Full detail, including checksums and the reasoning behind each version choice, i
 | Weights | `UHD_LL.pth`, sha256 `1977bb77...cae182`, 19,272,064 bytes |
 | Dataset | UHD-LL testing set, 150 pairs, 0 corrupt, 150/150 paired |
 
-Baseline forward pass at 3840x2176 measures 1347.89 ms median. Peak allocation is 11.2 GB, so
-whole-image 4K inference needs a 16 GB card at minimum.
+Measured by [`scripts/measure_footprint.py`](scripts/measure_footprint.py), 5 groups of 5 iterations
+after 5 warmup passes, fp32:
 
-Harness sanity check before trusting any timing: an 8192-cubed fp16 matmul reaches 162.8 TFLOPS,
-in line with this card's specification.
+| Input | Padded | CUDA-event median | Wall median | Reserved |
+|---|---|---|---|---|
+| 1280x768 | 1280x768 | 102.13 ms | 102.14 ms | 9.37 GiB |
+| 1920x1088 | 1920x1152 | 287.21 ms | 287.22 ms | 17.68 GiB |
+| 2560x1408 | 2560x1408 | 547.78 ms | 547.80 ms | 18.09 GiB |
+| **3840x2160** | **3840x2176** | **1348.49 ms** | 1348.27 ms | **19.42 GiB** |
+
+**A card with less than about 20 GiB will not hold whole-image 4K inference here.**
+
+Wall clock and CUDA-event timings agree to within 0.02% at every resolution, and group-to-group
+spread at 4K is 1.02 ms out of 1348 ms. Harness sanity check first, on the principle that something
+which cannot recover a known cost should not be trusted on an unknown one: an 8192-cubed fp16 matmul
+reaches 161.4 TFLOPS, in line with this card's specification.
+
+One caveat found while measuring, and the reason the table above reports reserved rather than
+allocated memory. With `cudnn.benchmark = True`, peak *allocated* came out non-monotonic in
+resolution (15.64 GiB at 1920x1152 against 15.28 GiB at 3840x2176), which cannot be a real working
+set. cuDNN's algorithm search allocates trial workspaces that land in the peak statistic, and it
+declines the larger ones once they stop fitting. The script now measures the working set in a
+separate pass with benchmark off and reports both.
 
 ---
 

@@ -44,15 +44,23 @@ Regenerate this table with:
 python scripts/determinism_audit.py --repo ~/RetinexDual --image <one UHD-LL input image>
 ```
 
-Input `1x3x2176x3840`, which is 3840x2160 reflect-padded to a multiple of 128. Five forward passes
-of the same input, runs 2 to 5 each compared against run 1. Full warmup completed before both
-experiments, `cudnn.benchmark=True`.
+Real UHD-LL test image `1003_UHD_LL.JPG`, which is `1x3x2176x3840` after reflect-padding to a
+multiple of 128. Five forward passes of the same input, runs 2 to 5 each compared against run 1.
+Full warmup completed first, `cudnn.benchmark=True`. Deltas are on a [0, 1] image scale.
 
 | | Mode | RNG reset per forward | Outputs identical | Max pixel delta | Mean delta | Pairwise PSNR |
 |---|---|---|---|---|---|---|
-| **A** | Natural inference, as released | no | **no** | 0.210 to 0.466 | 2.08e-3 | **51.50 dB** |
+| **A** | Natural inference, as released | no | **no** | 0.026 to 0.046 | 7.11e-04 | **59.38 dB** |
 | **B** | Exact RNG replay | yes | **yes, bit-identical** | 0.000 | 0.000 | inf |
 | **C** | Deterministic argmax routing | n/a | **yes, bit-identical** | 0.000 | 0.000 | inf |
+
+**The choice of input matters, and an earlier version of this table overstated the effect.** These
+figures replace ones measured on a synthetic uniform-random 4K input, which gave a max delta of
+0.210 to 0.466 and a pairwise PSNR of 51.50 dB. Random noise carries no spatial structure for the
+router to respond to, so its routing decisions scatter more and the outputs diverge more. On real
+photographs the mean divergence is about three times smaller and the pairwise PSNR roughly 8 dB
+higher. The qualitative verdict is unchanged. The numbers above are the ones that describe actual
+use, and they are the less dramatic of the two.
 
 ## Interpretation
 

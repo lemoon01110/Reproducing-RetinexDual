@@ -77,7 +77,7 @@ Maximum required glibc symbol, measured per wheel rather than assumed:
 
 That substitution was checked empirically rather than argued from version numbers. After install,
 `selective_scan_fn` (CUDA) agrees with `selective_scan_ref` (pure PyTorch) to a maximum absolute
-difference of 3.8e-6, and the full reproduction lands within 0.034 dB of the published PSNR.
+difference of 3.8e-6, and the full reproduction lands within 0.030 dB of the published PSNR.
 `setup_env.sh` runs the kernel comparison as an assertion, so a mismatched or miscompiled wheel
 fails at setup time instead of quietly producing wrong numbers.
 
@@ -100,7 +100,7 @@ Each of these was run before any result was recorded.
 2. **No shadowing.** Confirmed that no local directory named `mamba_ssm` sits ahead of
    site-packages on `sys.path`. Python puts the working directory first, so a stray local package
    silently replaces the real kernels, and any timing taken afterwards is meaningless.
-3. **Harness sanity.** An 8192-cubed fp16 matmul reaches **162.8 TFLOPS**, consistent with this
+3. **Harness sanity.** An 8192-cubed fp16 matmul reaches **161.4 TFLOPS**, consistent with this
    card's dense fp16 specification. A harness that cannot recover a known cost is not trusted to
    measure an unknown one.
 4. **Weight load.** 60 missing keys and 0 unexpected keys, all inside 12 `SpectralGuidanceModule`
@@ -116,5 +116,8 @@ Recorded explicitly so none of it can later be presented as an optimization win.
 - `model.eval()` together with `torch.inference_mode()`, not merely `no_grad`.
 - Input reflect-padded from 3840x2160 to **3840x2176** by `check_image_size`, a multiple of 128,
   matching `inference_RetinexDual.py`. Output cropped back to 2160 before metrics.
-- Baseline forward pass, stochastic routing as released: **1347.89 ms** median.
-- Peak allocation 11.2 GB, so whole-image 4K inference needs a 16 GB card at minimum.
+- Baseline forward pass, stochastic routing as released: **1348.49 ms** median (5 groups of 5
+  iterations, CUDA-event timing, wall clock agreeing to 0.02%).
+- The allocator reserves **19.42 GiB** at 3840x2176, so a card with less than about 20 GiB will not
+  hold whole-image 4K inference. See the caveat in README section 5 about why peak *allocated* is
+  not the right figure to quote when `cudnn.benchmark` is on.
