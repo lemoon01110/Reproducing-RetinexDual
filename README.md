@@ -582,6 +582,7 @@ tolerance is made impossible, which confirms the check is not vacuous).
 | [`FOOTPRINT.md`](FOOTPRINT.md) | the memory sweep, the scaling law, the allocator comparison and the ceiling |
 | [`results/README.md`](results/README.md) | provenance and column meanings for every artifact |
 | [`CITATION.cff`](CITATION.cff) | citation metadata, with the RetinexDual paper listed as the work reproduced |
+| [`NOTICE`](NOTICE) | attribution for every algorithm reimplemented here, and the licence position of each source |
 
 **Running the reproduction**
 
@@ -623,6 +624,19 @@ tolerance is made impossible, which confirms the check is not vacuous).
 Every artifact under [`results/`](results/) is described in
 [`results/README.md`](results/README.md), including which document it backs and which script
 produces it.
+
+## Attribution
+
+This repository is MIT licensed and vendors nothing. Upstream RetinexDual is Apache-2.0, as is
+BasicSR beneath it, and both are attributed in [`NOTICE`](NOTICE) along with the two short functions
+here that reimplement their behaviour so it can be measured.
+
+One case deserves saying out loud rather than leaving in a file. **ERR publishes no licence.** Its
+evaluation protocol was the strongest candidate explanation for the SSIM gap, so testing it meant
+computing SSIM the way ERR computes it. Nothing was copied: `ssim_err_cly` and `ssim_torch01` were
+written from a reading of its published configuration, and what they encode is a factual description
+of how a published number was produced. If the ERR authors would prefer them gone, an issue is
+enough.
 
 ## Citation
 

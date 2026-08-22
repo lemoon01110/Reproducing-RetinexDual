@@ -1,0 +1,75 @@
+Reproducing RetinexDual
+Copyright (c) 2026 Jack Wu
+
+This repository is licensed under the MIT License (see LICENSE). It contains no
+copied source from the projects below. It does contain independent
+reimplementations of published algorithms, written to measure specific
+configuration choices, and those are attributed here.
+
+--------------------------------------------------------------------------------
+RetinexDual  (https://github.com/ErrorLogic1211/RetinexDual)
+Copyright 2025-2026 Mohab Kishawy, Ali Abdellatif Hussein, Jun Chen
+Apache License 2.0
+
+  The work this repository reproduces. Its code and weights are downloaded at
+  run time and are neither vendored nor redistributed here.
+
+  Two short functions in scripts/ are reimplementations of behaviour in that
+  repository, written so this report can measure it:
+
+    check_image_size   reflect-padding to a multiple of 128, matching
+                       inference_RetinexDual.py, so the input geometry is
+                       identical to the released path
+    ssim_matlab        the MATLAB-style SSIM estimator in its utils.py, an
+                       11x11 Gaussian with sigma 1.5 and [0,255] constants
+
+--------------------------------------------------------------------------------
+BasicSR  (https://github.com/XPixelGroup/BasicSR)
+Copyright 2018-2022 BasicSR Authors
+Apache License 2.0
+
+  RetinexDual's basicsr/ package derives from BasicSR, and this repository calls
+  into it (img2tensor, tensor2img) rather than reimplementing it. The bgr2y
+  function in scripts/ssim_protocol_probe.py reproduces the BT.601 luma
+  coefficients BasicSR's bgr2ycbcr uses, which are from the ITU-R BT.601
+  standard rather than from BasicSR itself.
+
+--------------------------------------------------------------------------------
+ERR  (https://github.com/NJU-PCALab/ERR)
+Copyright the ERR authors
+
+  NO LICENCE IS PUBLISHED FOR THIS REPOSITORY, so no permission to copy its
+  source should be assumed, and none has been taken.
+
+  RetinexDual's README credits ERR for the UHD restoration benchmarks, which
+  made ERR's evaluation protocol the strongest candidate explanation for the
+  SSIM discrepancy in SSIM_GAP.md. Testing that required computing SSIM the way
+  ERR computes it.
+
+  Two functions in scripts/ssim_protocol_probe.py, ssim_err_cly and
+  ssim_torch01, were therefore written from a reading of its published
+  configuration rather than copied:
+
+    ssim_err_cly    SSIM on the luma channel with a 1-pixel border crop, using
+                    cv2.BORDER_REPLICATE and no crop of the filtered map
+    ssim_torch01    SSIM on [0,1]-scaled input with C1 = 0.01^2, C2 = 0.03^2
+                    and zero padding
+
+  Both compute SSIM, which is Wang, Bovik, Sheikh and Simoncelli 2004. What is
+  taken from ERR is the choice of parameters, which is a factual description of
+  how a published number was produced, not expression. If the ERR authors would
+  prefer these removed, opening an issue is enough.
+
+--------------------------------------------------------------------------------
+Multi-scale SSIM
+
+  scripts/ssim_protocol_probe.py implements MS-SSIM from Wang, Simoncelli and
+  Bovik, "Multiscale structural similarity for image quality assessment", 2003,
+  including its published scale weights. Written from the paper.
+
+--------------------------------------------------------------------------------
+UHD-LL dataset
+
+  Introduced by Li, Guo, Feng, Gu and Loy, "Embedding Fourier for Ultra-High-
+  Definition Low-Light Image Enhancement", ICLR 2023. Not redistributed here.
+  Section 6 of README.md points at the authors' own distribution.

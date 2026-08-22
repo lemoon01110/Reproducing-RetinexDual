@@ -46,7 +46,10 @@ def bgr2y(img):
 
 
 def ssim_matlab(img1, img2):
-    """The repository's own single-channel SSIM: 11x11 Gaussian, sigma 1.5."""
+    """The repository's own single-channel SSIM: 11x11 Gaussian, sigma 1.5.
+
+    Reimplemented from RetinexDual's utils.py, which is Apache-2.0. See NOTICE.
+    """
     C1, C2 = (0.01 * 255) ** 2, (0.03 * 255) ** 2
     img1, img2 = img1.astype(np.float64), img2.astype(np.float64)
     kernel = cv2.getGaussianKernel(11, 1.5)
@@ -75,7 +78,9 @@ def ssim_err_cly(img1, img2):
       2. It is applied to the Y channel after a 1-pixel border crop.
 
     Source: NJU-PCALab/ERR, comput_psnr_ssim.py, _ssim_cly and calculate_ssim,
-    whose defaults are crop_border=1 and test_y_channel=True.
+    whose defaults are crop_border=1 and test_y_channel=True. That repository
+    publishes no licence, so this is written from its published configuration
+    rather than copied. See NOTICE.
     """
     C1, C2 = (0.01 * 255) ** 2, (0.03 * 255) ** 2
     img1, img2 = img1.astype(np.float64), img2.astype(np.float64)
@@ -113,6 +118,8 @@ def ssim_torch01(out, gt):
     convolves with padding = window // 2 rather than cropping to valid.
     Zero padding at the border drags both means toward zero, which behaves
     differently from replicate padding or from cropping.
+
+    Written from ERR's published configuration, not copied. See NOTICE.
     """
     import torch
     import torch.nn.functional as Fn

@@ -120,6 +120,16 @@ def check_inventory():
     for f in sorted((ROOT / "scripts").glob("*.py")):
         if f"scripts/{f.name}" not in readme:
             bad.append(f"scripts/{f.name} is not listed in README section 8")
+    # Anything reimplemented from another project has to be attributed. NOTICE is
+    # the place, and it is easy to add a function and forget.
+    notice = (ROOT / "NOTICE").read_text() if (ROOT / "NOTICE").exists() else ""
+    if not notice:
+        bad.append("NOTICE is missing, so reimplemented algorithms are unattributed")
+    else:
+        for fn in ("check_image_size", "ssim_matlab", "ssim_err_cly", "ssim_torch01", "bgr2y"):
+            if fn not in notice:
+                bad.append(f"{fn} is reimplemented from another project but not named in NOTICE")
+
     res_readme = (ROOT / "results" / "README.md").read_text()
     for f in sorted((ROOT / "results").glob("*")):
         if f.name == "README.md":
