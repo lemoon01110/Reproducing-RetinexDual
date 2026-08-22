@@ -4,8 +4,10 @@
   "target": 0.934,
   "fast": true,
   "protocols": {
-    "repo_rgb_mean": 0.922175526301452,
-    "matlab_y": 0.9465603726001024,
-    "matlab_y_border4": 0.9465160792582548
+    "repo_rgb_mean": 0.9221756336202092,
+    "matlab_y": 0.9465600843435087,
+    "matlab_y_border4": 0.9465157898151095,
+    "matlab_rgb_float": 0.9231136010402826,
+    "matlab_y_float": 0.9468839881520574
   }
 }

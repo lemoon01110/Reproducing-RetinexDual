@@ -7,7 +7,7 @@ An independent reproduction of **RetinexDual** (Kishawy, Hussein and Chen, ICPR 
 
 The badge covers internal consistency only, not the measurements. See section 7.
 
-The paper's headline PSNR reproduces. Its SSIM does not, and after testing six SSIM conventions
+The paper's headline PSNR reproduces. Its SSIM does not, and after testing eight SSIM conventions
 against it I still cannot account for the difference. Getting to either number took working around
 three undocumented defects in the released repository, each of which stops a clean checkout from
 running at all, plus two further traps that do not stop it running and instead hand you a number
@@ -76,14 +76,16 @@ scikit-image's 7x7 uniform default. Measured here, those choices differ from eac
 which is twice the gap being explained, so the hypothesis was worth taking seriously.
 
 [`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) tests exactly this, scoring one
-set of model outputs under six conventions. A 40-image pilot showed the three scikit-image variants
-agreeing with their MATLAB-kernel equivalents to five decimals, so the full 150-image run carries
-the three that differ:
+set of model outputs under eight conventions. A 40-image pilot showed the three scikit-image variants
+agreeing with their MATLAB-kernel equivalents to five decimals, so the full 150-image run carries the
+five that differ:
 
 | protocol | SSIM | vs repo helper | vs paper |
 |---|---|---|---|
+| `matlab_y_float` (luma, before uint8 rounding) | 0.94688 | +0.02471 | +0.01288 |
 | `matlab_y` (luma, 11x11 Gaussian) | 0.94656 | +0.02438 | **+0.01256** |
 | `matlab_y_border4` (luma, 4px border crop) | 0.94652 | +0.02434 | +0.01252 |
+| `matlab_rgb_float` (RGB, before uint8 rounding) | 0.92311 | +0.00094 | -0.01089 |
 | `repo_rgb_mean` (what this repo reports) | 0.92218 | 0.00000 | **-0.01182** |
 
 All 150 images, one seed. SSIM's run-to-run spread is 0.000016, so a single seed is sufficient here
@@ -95,13 +97,21 @@ verifies this table against. A re-run reproduced all three figures to five decim
 value falls *between* per-channel RGB and luma, roughly 0.012 from each, so it is not simply that
 the authors used the other common convention.
 
+The two `_float` rows test a separate idea: that the published figure might come from scoring the
+model output before `tensor2img` rounds it to uint8. Some codebases evaluate in float space, which
+removes quantisation noise and should raise SSIM. It does, by **0.0009**, which is about 8% of the
+gap. So that is not the explanation either. Worth testing and worth reporting as a negative, because
+it is a real difference between evaluation pipelines and it turns out to be far too small to matter
+here. The float path is validated inside the script by checking that rounding it recovers
+`tensor2img`'s output exactly, so a channel-order mistake cannot masquerade as a finding.
+
 Two things this does establish. The probe agrees with the main evaluation to five decimals
 (0.92218 against 0.92217), so the reproduction's SSIM is not an artifact of how it is computed. And
 scikit-image configured with the same kernel reproduces both the RGB and luma figures exactly, so
 the MATLAB-style implementation here is not itself the problem.
 
-For completeness, since it is the first thing a reader will notice: the midpoint of the two
-conventions is 0.93437, which is close to 0.934. I have no mechanism that would make an average of
+For completeness, since it is the first thing a reader will notice: the midpoint of the extreme two
+conventions is 0.93453, which is close to 0.934. I have no mechanism that would make an average of
 two metrics meaningful, so I am recording it as a coincidence rather than a finding.
 
 Candidates I did not test, and cannot from here, include a different evaluation split, a different

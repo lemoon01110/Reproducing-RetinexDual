@@ -100,9 +100,14 @@ difference rather than a model difference:
 
 | protocol | SSIM | vs repo helper | vs paper |
 |---|---|---|---|
+| `matlab_y_float` | 0.94688 | +0.02471 | +0.01288 |
 | `matlab_y` | 0.94656 | +0.02438 | +0.01256 |
 | `matlab_y_border4` | 0.94652 | +0.02434 | +0.01252 |
+| `matlab_rgb_float` | 0.92311 | +0.00094 | -0.01089 |
 | `repo_rgb_mean` | 0.92218 | 0.00000 | -0.01182 |
+
+The `_float` rows score the model output before `tensor2img` rounds it to uint8. That accounts for
+0.0009 of the 0.0118 gap, roughly 8%, so evaluating in float space is not the explanation.
 
 No convention tested reaches 0.934, and the published value falls between the two commonest ones.
 The gap is not explained. See README section 1.
