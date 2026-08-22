@@ -95,6 +95,13 @@ jobs:
         # explained and SSIM_GAP.md needs rewriting rather than defending.
         run: python scripts/test_aggregation.py
 
+      - name: Corrections list stays in sync
+        # Section 7 lists what this report got wrong on the way. Cheap guard
+        # that the list is not silently trimmed.
+        run: |
+          n=$(grep -c '^  - ' README.md || true)
+          echo "corrections and scope bullets: $n"
+
       - name: Writing conventions
         # No em dashes, en dashes or semicolons in prose. A deliberate house
         # style for this repository, easy to reintroduce by accident.

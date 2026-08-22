@@ -226,6 +226,25 @@ def check_tables():
             if f"{val:.4f}" not in all_docs:
                 problems.append(f"no document states PSNR {val:.4f} for protocol '{proto}'")
 
+        # Checkpoint audit. These numbers were quoted from notes for a long time
+        # before anything re-measured them.
+        ca = ROOT / "results" / "checkpoint_audit.json"
+        if not ca.exists():
+            problems.append("results/checkpoint_audit.json missing")
+        else:
+            c = json.loads(ca.read_text())
+            for key, fmt in (("code_tensors", "{:,}"), ("code_params", "{:,}"),
+                             ("ckpt_tensors", "{:,}"), ("ckpt_params", "{:,}"),
+                             ("missing_keys", "{}"), ("sgm_modules", "{}")):
+                v = fmt.format(c[key])
+                if v not in all_docs:
+                    problems.append(f"no document states {key} = {v}")
+            if not c["verdict_inert"]:
+                problems.append("checkpoint_audit.json says the SGM modules are NOT inert, "
+                                "which contradicts README section 4.1")
+            if c["sgm_forward_calls"] != 0:
+                problems.append(f"SGM forward calls is {c['sgm_forward_calls']}, not 0")
+
         if sj["n_images"] < 150:
             problems.append(f"ssim_protocols.json is a partial run ({sj['n_images']} images). "
                             f"The published table must come from the full set.")

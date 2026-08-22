@@ -144,6 +144,7 @@ Before they existed, those tables had no source of truth and went stale repeated
 | `figure_data.json` | ties `assets/reproduction.png` to the CSVs it was drawn from | `scripts/make_figure.py --out-json` |
 | `qualitative_picks.json` | records which images `assets/qualitative.png` shows, and why | `scripts/make_qualitative.py --out-json` |
 | `timing.json` | the measured wall clock in README section 6 | `scripts/evaluate.py`, recorded in its summary |
+| `checkpoint_audit.json` | the checkpoint and code counts in README section 4.1, and the SGM inertness proof | `scripts/verify_checkpoint.py --out` |
 | `footprint_memory_expandable.json` | the allocator comparison in README section 5 | `measure_footprint.py --mode memory` under `expandable_segments` |
 | `ceiling_bracket_default.json` | the OOM boundary in README section 5 | `scripts/find_ceiling.py --out` |
 | `ceiling_bracket_expandable.json` | the same boundary under `expandable_segments` | `scripts/find_ceiling.py --out` |

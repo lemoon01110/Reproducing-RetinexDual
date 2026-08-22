@@ -1,0 +1,20 @@
+{
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "torch": "2.6.0+cu124",
+  "code_tensors": 826,
+  "code_params": 4747035,
+  "ckpt_tensors": 766,
+  "ckpt_params": 4725531,
+  "missing_keys": 60,
+  "unexpected_keys": 0,
+  "missing_all_sgm": true,
+  "sgm_modules": 12,
+  "sgm_alpha_count": 12,
+  "sgm_alpha_max_abs": 0.0,
+  "sgm_forward_calls": 0,
+  "sgm_removed_max_abs_delta": 0.0,
+  "sgm_removed_bit_identical": true,
+  "kernel_vs_reference_max_abs_diff": 3.814697265625e-06,
+  "matmul_tflops": 166.31430607661338,
+  "verdict_inert": true
+}

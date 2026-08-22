@@ -295,11 +295,24 @@ The checkpoint's 4,725,531 parameters match the paper's stated 4.726M. The code 
 60 extra tensors belong to 12 `SpectralGuidanceModule` instances in the illumination branch. The
 conclusion is simply that **the released code is a later revision than the released checkpoint**.
 
-This is harmless, and I verified that rather than assuming it. Every `SpectralGuidanceModule` ends
-with `out = freq_features + self.alpha * (conditioned - freq_features)` where `alpha` is
-zero-initialised. All 12 alphas load as exactly 0.0, and replacing every such module with an
-identity gives bit-identical output, maximum absolute delta 0.0. The randomly initialised tensors
-cannot reach the output.
+This is harmless, and [`scripts/verify_checkpoint.py`](scripts/verify_checkpoint.py) measures that
+rather than asserting it, on three independent lines of evidence:
+
+1. Every `SpectralGuidanceModule` ends with `out = freq + alpha * (conditioned - freq)`, and all
+   **12** alphas load as exactly **0.0**, which makes the module the identity.
+2. Forward hooks count **zero** SGM invocations during a full forward pass, so they never run.
+3. Physically replacing all 12 with `nn.Identity` leaves the output **bit-identical**, maximum
+   absolute delta 0.0.
+
+Any one of those would settle it. Recorded in
+[`results/checkpoint_audit.json`](results/checkpoint_audit.json) and checked by CI, because this was
+carried as a claim from earlier notes for a long time before anything re-measured it.
+
+Writing that check produced a false alarm worth repeating. The first version seeded only the CPU RNG
+before the two forward passes, and reported a 0.0936 delta that looked like the modules mattering.
+Routing samples from `gumbel_softmax` on CUDA, so the two passes had simply routed differently. It
+is the exact trap [`DETERMINISM.md`](DETERMINISM.md) documents, and I fell into it while writing the
+tool that verifies a different claim.
 
 **This says nothing about whether the paper's numbers are right.** It shows only that two released
 artifacts come from different revisions.
@@ -634,6 +647,7 @@ tolerance is made impossible, which confirms the check is not vacuous).
 | [`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) | scores outputs under ten SSIM and three PSNR conventions |
 | [`scripts/test_aggregation.py`](scripts/test_aggregation.py) | tests whether aggregation choices explain the SSIM gap |
 | [`scripts/test_metrics.py`](scripts/test_metrics.py) | pins the metric implementations against reference implementations |
+| [`scripts/verify_checkpoint.py`](scripts/verify_checkpoint.py) | audits the checkpoint against the code, and proves the missing tensors inert |
 | `results/reproduction_seeds.csv` | 5 rows, dataset-level PSNR and SSIM per seed |
 | `results/reproduction_per_image.csv` | 150 rows, per-image mean and standard deviation |
 | [`results/README.md`](results/README.md) | provenance and column meanings for both CSVs |
