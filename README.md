@@ -28,6 +28,8 @@ Upstream: [ErrorLogic1211/RetinexDual](https://github.com/ErrorLogic1211/Retinex
 is the part that would have saved someone a day. [1](#1-what-reproduces-and-what-does-not) has the
 numbers and the one failure.
 
+**This report**
+
 1. [What reproduces, and what does not](#1-what-reproduces-and-what-does-not)
 2. [Three defects that stop the released code from running](#2-three-defects-that-stop-the-released-code-from-running)
 3. [Two traps that do not stop the code running](#3-two-traps-that-do-not-stop-the-code-running)
@@ -36,6 +38,15 @@ numbers and the one failure.
 6. [Reproducing this](#6-reproducing-this)
 7. [Scope, and what this is not](#7-scope-and-what-this-is-not)
 8. [Files](#8-files)
+
+**Where the detail lives.** Four investigations outgrew this document and have their own:
+
+| | |
+|---|---|
+| [`SSIM_GAP.md`](SSIM_GAP.md) | ten SSIM conventions, three PSNR conventions, and why none of them explains the gap |
+| [`FOOTPRINT.md`](FOOTPRINT.md) | the memory sweep, the scaling law, the allocator comparison and the measured ceiling |
+| [`DETERMINISM.md`](DETERMINISM.md) | why default inference is not reproducible, and the two separate sources of that |
+| [`ENVIRONMENT.md`](ENVIRONMENT.md) | versions, checksums, and every deviation from the pinned set with its reason |
 
 ---
 
@@ -67,8 +78,8 @@ PSNR lands 0.030 dB above the published value, which is well inside what counts 
 **SSIM does not reproduce.** It comes out 0.0118 low, which is roughly 700 times the 0.000016
 run-to-run spread, so this is a real difference and not noise.
 
-The obvious explanation is that "SSIM" names a family rather than one number, and the two papers
-picked different members of it. I tested that, hard, and it does not hold.
+The obvious explanation is that "SSIM" names a family rather than one number, and that the paper and
+this reproduction picked different members of it. I tested that, hard, and it does not hold.
 [`SSIM_GAP.md`](SSIM_GAP.md) has the full investigation. In short, ten conventions measured over all
 150 images leave an empty band 0.0234 wide around the published value. **No protocol lands within
 0.0109 of 0.934.** They cluster instead into RGB-like around 0.922 and luma-like around 0.947, and
@@ -99,21 +110,21 @@ instead of flat wall. Regenerate with
 
 ![Worst, median and best case: low-light input, reproduction output, ground truth](assets/qualitative.png)
 
-That figure is 2.5 MB and deliberately not compressed further. Quantising it to 256 colours would
-cut it to 1.1 MB at 38.79 dB against the original, which sounds harmless until you notice the figure
-exists to show fidelity differences in the 16 to 40 dB range. Introducing a compression artifact of
-comparable order into the evidence for a PSNR argument invites the reasonable question of whether
-what you are looking at is the model or the encoder. It stays lossless.
-
 The worst case at 16.74 dB is the useful one to look at. It is a fine metallic mesh, and the output
 is a plausible restoration that loses the exact phase of the weave rather than a broken image. That
 is the failure mode you would expect from a hard high-frequency texture, and it is evidence the
 16.74 dB is the benchmark being hard rather than the reproduction being wrong. At the median the
 text and QR code are legible and close to ground truth.
 
+That figure is 2.5 MB and deliberately not compressed further. Quantising it to 256 colours would
+cut it to 1.1 MB at 38.79 dB against the original, which sounds harmless until you notice the figure
+exists to show fidelity differences in the 16 to 40 dB range. Introducing a compression artifact of
+comparable order into the evidence for a PSNR argument invites the reasonable question of whether
+what you are looking at is the model or the encoder. It stays lossless.
+
 ### Metric protocol
 
-Stated explicitly, because PSNR is only comparable when the protocol is:
+PSNR numbers are only comparable when the protocol matches, so here is this one in full:
 
 - RGB channels, not luma. Range [0, 255]. `20 * log10(255 / sqrt(mse))`.
 - No border crop.
