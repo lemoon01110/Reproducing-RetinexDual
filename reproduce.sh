@@ -9,6 +9,12 @@ set -euo pipefail
 # Strip a leading `--` so `bash reproduce.sh -- --limit 4` reads naturally.
 if [[ "${1:-}" == "--" ]]; then shift; fi
 
+# The default CUDA allocator reserves 1.8x the working set at 4K and fragments
+# badly, which pushes the requirement from a 16 GB card to a 24 GB one. Expandable
+# segments bring reserved to within 6% of allocated. See README section 5.
+# Override by exporting PYTORCH_CUDA_ALLOC_CONF yourself before calling this.
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+
 REPO_DIR="${REPO_DIR:-$HOME/RetinexDual}"
 DATA_DIR="${DATA_DIR:-$HOME/data/UHD_LL/testing_set}"
 SEEDS="${SEEDS:-0 1 2 3 4}"
@@ -19,6 +25,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "==> repo    ${REPO_DIR}"
 echo "==> data    ${DATA_DIR}"
 echo "==> seeds   ${SEEDS}"
+echo "==> alloc   PYTORCH_CUDA_ALLOC_CONF=${PYTORCH_CUDA_ALLOC_CONF}"
 echo "==> out     ${OUT_DIR}"
 echo
 

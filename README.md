@@ -420,6 +420,31 @@ marginal at 11.64 GiB reserved and is not something I have tested.
 Smaller inputs, with expandable segments: 2560x1408 needs 5.04 GiB reserved, 1920x1088 needs 3.11,
 and 1280x768 needs 1.41. So an 8 GB card handles everything up to about 3.6 Mpix.
 
+### Where it stops working
+
+Pushing past 4K until it fails, rather than extrapolating:
+
+| Input | Padded | Mpix | Working set | Result |
+|---|---|---|---|---|
+| 3840x2160 | 3840x2176 | 8.36 | 10.94 GiB | runs |
+| 5120x2880 | 5120x2944 | 15.07 | **19.70 GiB** | **runs** |
+| 6016x3384 | | 20.36 | | **OOM** |
+| 7680x4320 | | 33.18 | | OOM |
+
+**5K runs on a 24 GB card. 6K does not.** The 1.31 GiB per Mpix law predicts the 5K working set as
+19.74 GiB against 19.70 measured, an error of 0.2%, so the law extrapolates well and the OOM
+threshold it implies for a 24 GB card, about 17.9 Mpix, sits exactly between the largest input that
+runs and the smallest that fails.
+
+Expandable segments make no difference to this ceiling, and that is the point worth taking away.
+They fix *fragmentation*, which is why they save 8 GiB at 4K where the working set fits with room to
+spare. At 6K the working set alone would be about 26.7 GiB, more than the card holds, so no
+allocator strategy helps. Reserved memory is the constraint at 4K, allocated memory is the
+constraint at the ceiling, and they want different fixes.
+
+Backed by [`results/ceiling_default.json`](results/ceiling_default.json) and
+[`results/ceiling_expandable.json`](results/ceiling_expandable.json).
+
 Backed by [`results/footprint_memory.json`](results/footprint_memory.json) and
 [`results/footprint_memory_expandable.json`](results/footprint_memory_expandable.json).
 
@@ -478,10 +503,14 @@ It prints the expected layout and verifies pairing, dimensions and decodability,
 because a truncated Drive download is the normal failure mode and section 3.2 explains how that
 turns into a plausible but wrong PSNR rather than an error.
 
-Budget roughly 20 minutes per seed on a 4090. SSIM at 3840x2160 is computed on the CPU and
-dominates the wall clock, not the forward pass. Two flags exist for checking the plumbing before
-committing to the full run, and both label themselves in the output so their results cannot be
-mistaken for a reproduction:
+**Measured wall clock on a 4090: 7.0 minutes per seed, 35.1 minutes for the full five, at
+2.81 s per image**, recorded in [`results/timing.json`](results/timing.json). An earlier version of this section said "roughly 20 minutes per seed" from
+impression rather than measurement, and was wrong by a factor of three. The forward pass is about
+1.35 s of that 2.80 s, with the remainder mostly CPU-side SSIM at 3840x2160 and image IO, which is
+why `--skip-ssim` is worth having.
+
+Two flags exist for checking the plumbing before committing to the full run, and both label
+themselves in the output so their results cannot be mistaken for a reproduction:
 
 ```bash
 bash reproduce.sh -- --limit 4 --skip-ssim    # a couple of minutes, verifies everything wires up

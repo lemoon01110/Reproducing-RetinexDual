@@ -131,6 +131,9 @@ def main():
     ap.add_argument("--groups", type=int, default=5)
     ap.add_argument("--iters", type=int, default=5)
     ap.add_argument("--warmup", type=int, default=5)
+    ap.add_argument("--find-limit", action="store_true",
+                    help="sweep past 4K until it OOMs, measuring the ceiling on this card "
+                         "instead of extrapolating")
     ap.add_argument("--sweep", action="store_true",
                     help="also measure smaller resolutions to show how peak memory scales")
     ap.add_argument("--out", default=None,
@@ -179,6 +182,10 @@ def main():
     resolutions = [(2160, 3840)]
     if args.sweep:
         resolutions = [(768, 1280), (1088, 1920), (1408, 2560), (2160, 3840)]
+    if args.find_limit:
+        # Push past 4K until it fails, so the ceiling on this card is measured
+        # rather than extrapolated from the GiB-per-Mpix law.
+        resolutions = [(2160, 3840), (2880, 5120), (3384, 6016), (4320, 7680)]
 
     rows = []
     for h, w in resolutions:
@@ -189,6 +196,7 @@ def main():
             print("           OOM", flush=True)
             rows.append((h, w, None))
             torch.cuda.empty_cache()
+            torch.cuda.reset_peak_memory_stats()
             continue
         rows.append((h, w, r))
         bits = []

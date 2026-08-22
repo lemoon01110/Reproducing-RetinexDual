@@ -237,6 +237,19 @@ def check_tables():
             problems.append("figure_data.json image count does not match "
                             "reproduction_per_image.csv")
 
+    # Wall clock was quoted from impression rather than measurement for several
+    # revisions, and was wrong by a factor of three. It now has an artifact.
+    t_p = ROOT / "results" / "timing.json"
+    if not t_p.exists():
+        problems.append("results/timing.json missing")
+    else:
+        tj = json.loads(t_p.read_text())
+        per_seed = f"{sum(tj['seed_times_s']) / len(tj['seed_times_s']) / 60:.1f} minutes per seed"
+        total = f"{tj['wall_clock_s'] / 60:.1f} minutes for the full five"
+        for frag in (per_seed, total, f"{tj['s_per_image']:.2f} s per image"):
+            if frag not in readme:
+                problems.append(f"README does not state '{frag}' from timing.json")
+
     # The qualitative figure needs a GPU to regenerate, so CI cannot rebuild it.
     # It can still check that the images shown were selected by the stated rule,
     # which is the part a reader would be right to be sceptical about.

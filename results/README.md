@@ -124,6 +124,10 @@ Before they existed, those tables had no source of truth and went stale repeated
 | `ssim_protocols.json` | the SSIM protocol table in README section 1 | `scripts/ssim_protocol_probe.py --out` |
 | `figure_data.json` | ties `assets/reproduction.png` to the CSVs it was drawn from | `scripts/make_figure.py --out-json` |
 | `qualitative_picks.json` | records which images `assets/qualitative.png` shows, and why | `scripts/make_qualitative.py --out-json` |
+| `timing.json` | the measured wall clock in README section 6 | `scripts/evaluate.py`, recorded in its summary |
+| `footprint_memory_expandable.json` | the allocator comparison in README section 5 | `measure_footprint.py --mode memory` under `expandable_segments` |
+| `ceiling_default.json` | the OOM boundary in README section 5 | `measure_footprint.py --find-limit` |
+| `ceiling_expandable.json` | the same boundary under `expandable_segments` | `measure_footprint.py --find-limit` |
 
 Two of these reproduce exactly on a re-run and one does not, which is worth knowing before quoting
 them. `ssim_protocols.json` reproduced all three figures to five decimals. `footprint_latency.json`
