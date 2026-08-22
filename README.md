@@ -59,13 +59,18 @@ scikit-image's 7x7 uniform default. Measured here, those choices differ from eac
 which is twice the gap being explained, so the hypothesis was worth taking seriously.
 
 [`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) tests exactly this, scoring one
-set of model outputs under several conventions over all 150 images:
+set of model outputs under six conventions. A 40-image pilot showed the three scikit-image variants
+agreeing with their MATLAB-kernel equivalents to five decimals, so the full 150-image run carries
+the three that differ:
 
 | protocol | SSIM | vs repo helper | vs paper |
 |---|---|---|---|
 | `matlab_y` (luma, 11x11 Gaussian) | 0.94656 | +0.02438 | **+0.01256** |
 | `matlab_y_border4` (luma, 4px border crop) | 0.94652 | +0.02434 | +0.01252 |
 | `repo_rgb_mean` (what this repo reports) | 0.92218 | 0.00000 | **-0.01182** |
+
+All 150 images, one seed. SSIM's run-to-run spread is 0.000016, so a single seed is sufficient here
+in a way it is not for PSNR.
 
 **The hypothesis fails, and the gap stays open.** No convention tested lands on 0.934. The published
 value falls *between* per-channel RGB and luma, roughly 0.012 from each, so it is not simply that
@@ -341,7 +346,7 @@ Laptop, compute capability 12.0) at 1.31 GiB per Mpix, so it is a property of th
 of one card.
 
 **A card with less than about 20 GiB will not hold whole-image 4K inference here.** The working set
-is 10.94 GiB, but with `cudnn.benchmark = True` the allocator reserves 19.67 GiB, and reserved is
+is 10.94 GiB, but with `cudnn.benchmark = True` the allocator reserves 19.54 GiB, and reserved is
 what determines whether the run fits.
 
 Wall clock and CUDA-event timings agree to within 0.02% at every resolution, and group-to-group
@@ -428,7 +433,14 @@ python scripts/make_figure.py                                                   
   ordinary, they are the normal condition of research code, and they say nothing about the quality
   of the method. The method reproduces.
 - Where a number came out against my expectation, in particular the SSIM gap, it is reported as
-  unresolved instead of explained away.
+  unresolved instead of explained away. The metric-convention hypothesis was tested and failed.
+- Several figures in earlier revisions of this report were wrong and were corrected against fresh
+  measurements rather than quietly dropped. The determinism table was measured on synthetic noise
+  and overstated the effect. The memory sweep was contaminated by cuDNN's algorithm search. The
+  first SSIM probe compared a 40-image subset against a full-set published number. Each is now
+  noted at the point where it appears. The git history has the details.
+- The single largest thing this cannot settle: whether the paper's SSIM protocol matches any of the
+  ones tested here. Only the authors can answer that.
 
 ## 8. Files
 
