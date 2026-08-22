@@ -17,6 +17,7 @@ Usage:
   python scripts/determinism_audit.py --repo ~/RetinexDual --synthetic
 """
 import argparse
+import json
 import math
 import os
 import sys
@@ -98,6 +99,9 @@ def main():
                     help="how many images to sample from --image-dir, evenly spaced")
     ap.add_argument("--synthetic", action="store_true", help="use a random 3840x2160 input instead")
     ap.add_argument("--passes", type=int, default=5)
+    ap.add_argument("--out", default=None,
+                    help="write a JSON artifact so the published table has a "
+                         "machine-checkable source of truth")
     args = ap.parse_args()
 
     repo = os.path.abspath(os.path.expanduser(args.repo))
@@ -201,6 +205,26 @@ def main():
         for src in per_image:
             r = per_image[src]["A"]
             print(f"| `{src}` | {r['max_hi']:.4f} | {r['mean']:.2e} | {r['psnr']:.2f} dB |")
+
+    if args.out:
+        agg = {}
+        for tag, mode, label, reset in modes:
+            rs = [per_image[s][tag] for s in per_image]
+            agg[tag] = {
+                "label": label, "rng_reset": reset,
+                "identical": all(r["identical"] for r in rs),
+                "max_lo": min(r["max_lo"] for r in rs),
+                "max_hi": max(r["max_hi"] for r in rs),
+                "mean": sum(r["mean"] for r in rs) / len(rs),
+                "psnr_lo": min(r["psnr"] for r in rs),
+                "psnr_hi": max(r["psnr"] for r in rs),
+            }
+        with open(args.out, "w") as f:
+            json.dump({"n_images": len(inputs), "passes": args.passes,
+                       "images": sorted(per_image), "aggregate": agg,
+                       "per_image": {k: {t: v[t] for t in v} for k, v in per_image.items()}},
+                      f, indent=2)
+        print(f"[out] wrote {args.out}", flush=True)
 
     a = [per_image[s]["A"] for s in per_image]
     b = [per_image[s]["B"] for s in per_image]

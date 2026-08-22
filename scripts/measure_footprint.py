@@ -15,6 +15,7 @@ Usage:
   python scripts/measure_footprint.py --repo ~/RetinexDual --sweep
 """
 import argparse
+import json
 import os
 import statistics as st
 import sys
@@ -132,6 +133,9 @@ def main():
     ap.add_argument("--warmup", type=int, default=5)
     ap.add_argument("--sweep", action="store_true",
                     help="also measure smaller resolutions to show how peak memory scales")
+    ap.add_argument("--out", default=None,
+                    help="write a JSON artifact so the published table has a "
+                         "machine-checkable source of truth")
     ap.add_argument("--mode", choices=["both", "memory", "latency"], default="both",
                     help="latency and memory want opposite cudnn.benchmark settings and "
                          "contaminate each other within one process. Use separate "
@@ -193,6 +197,20 @@ def main():
         if "peak_alloc" in r:
             bits.append(f"peak alloc {r['peak_alloc']:.2f} GiB")
         print(f"           {', '.join(bits)}", flush=True)
+
+    if args.out:
+        payload = {"gpu": gpu, "torch": torch.__version__, "mode": args.mode,
+                   "groups": args.groups, "iters": args.iters, "warmup": args.warmup,
+                   "tflops_check": tflops, "rows": []}
+        for h, w, r in rows:
+            row = {"h": h, "w": w, "oom": r is None}
+            if r:
+                row.update({k: v for k, v in r.items() if k != "padded"})
+                row["padded"] = list(r["padded"])
+            payload["rows"].append(row)
+        with open(args.out, "w") as f:
+            json.dump(payload, f, indent=2)
+        print(f"[out] wrote {args.out}", flush=True)
 
     print(f"\n{gpu}, torch {torch.__version__}, fp32, mode={args.mode}")
     print(f"{args.groups} groups x {args.iters} iterations, {args.warmup} warmup\n")

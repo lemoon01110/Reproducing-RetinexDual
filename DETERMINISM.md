@@ -52,7 +52,7 @@ image scale.
 
 | | Mode | RNG reset per forward | Outputs identical | Max pixel delta | Mean delta | Pairwise PSNR |
 |---|---|---|---|---|---|---|
-| **A** | Natural inference, as released | no | **no** | 0.008 to 0.135 | 4.95e-04 | **58.59 to 65.17 dB** |
+| **A** | Natural inference, as released | no | **no** | 0.007 to 0.049 | 5.40e-04 | **59.09 to 64.19 dB** |
 | **B** | Exact RNG replay | yes | **yes, bit-identical** | 0.000 | 0.000 | inf |
 | **C** | Deterministic argmax routing | n/a | **yes, bit-identical** | 0.000 | 0.000 | inf |
 
@@ -60,22 +60,28 @@ Per image, natural inference:
 
 | image | max delta | mean delta | pairwise PSNR |
 |---|---|---|---|
-| `1003_UHD_LL.JPG` | 0.1354 | 7.87e-04 | 58.59 dB |
-| `1453_UHD_LL.JPG` | 0.0249 | 3.94e-04 | 64.71 dB |
-| `1778_UHD_LL.JPG` | 0.0186 | 3.98e-04 | 65.17 dB |
-| `28_UHD_LL.JPG` | 0.0162 | 4.89e-04 | 62.88 dB |
-| `674_UHD_LL.JPG` | 0.0131 | 4.06e-04 | 64.23 dB |
+| `1003_UHD_LL.JPG` | 0.0486 | 7.01e-04 | 59.78 dB |
+| `1453_UHD_LL.JPG` | 0.0156 | 4.22e-04 | 64.19 dB |
+| `1778_UHD_LL.JPG` | 0.0115 | 5.53e-04 | 60.36 dB |
+| `28_UHD_LL.JPG` | 0.0186 | 5.71e-04 | 59.09 dB |
+| `674_UHD_LL.JPG` | 0.0115 | 4.53e-04 | 62.44 dB |
 
-**Two earlier versions of this table were measured on a single input and both misrepresented the
-spread.** The first used synthetic uniform-random noise and reported a max delta of 0.210 to 0.466
-at 51.50 dB, far worse than any real image, because noise gives the router no spatial structure and
-its decisions scatter more. The second used `1003_UHD_LL.JPG` alone, which the per-image table above
-shows is the *most* variable of the five at 58.59 dB against 62.88 to 65.17 for the rest. Neither
-was wrong as a measurement. Both were a single point presented as a general claim.
+Backed by [`results/determinism.json`](results/determinism.json), which `scripts/check_report.py`
+verifies this table against, so the two cannot drift apart.
 
-Note also that the max delta is itself stochastic, since the audit does not fix a seed. Repeated
-runs on the same image give different maxima. The stable quantities are the mean delta, around
-5e-04, and the identical or not verdict, which is what the argument actually rests on.
+**Earlier versions of this table were measured on a single input and misrepresented the spread.**
+The first used synthetic uniform-random noise and reported a max delta of 0.210 to 0.466 at
+51.50 dB, far worse than any real image, because noise gives the router no spatial structure and its
+decisions scatter more. The second used `1003_UHD_LL.JPG` alone, which is consistently among the
+most variable of the five. Neither was wrong as a measurement. Both were a single point presented as
+a general claim.
+
+**The max delta is itself stochastic and should not be read as a constant.** The audit fixes no
+seed, so repeated runs on the same five images give different maxima. Two consecutive runs gave
+0.008 to 0.135 and 0.007 to 0.049 for the same images. The mean delta is stable at roughly 5e-04
+across both, and the identical or not verdict never moves. Those two are what the argument rests
+on. The max is reported because it shows the perturbation is locally large, not because any
+particular value of it is reproducible.
 
 ## Interpretation
 
@@ -91,7 +97,7 @@ Without experiment B, row A on its own is ambiguous, since nondeterministic redu
 kernel would produce a similar-looking result for an entirely different reason.
 
 The perturbation is localised rather than spread evenly. Mean absolute delta is about 5e-04, well
-under one 8-bit level, while the maximum reaches 0.135 on the worst image, roughly 34 levels. So
+under one 8-bit level, while the maximum reaches roughly 0.05 to 0.14 depending on the run, some tens of levels. So
 most pixels are untouched and a small number move a lot, which is what flipping a routing decision
 for a subset of tokens would do.
 

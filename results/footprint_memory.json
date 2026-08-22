@@ -1,0 +1,63 @@
+{
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "torch": "2.6.0+cu124",
+  "mode": "memory",
+  "groups": 5,
+  "iters": 5,
+  "warmup": 5,
+  "tflops_check": 159.76652386662073,
+  "rows": [
+    {
+      "h": 768,
+      "w": 1280,
+      "oom": false,
+      "peak_alloc": 1.3140945434570312,
+      "peak_reserved": 2.423828125,
+      "padded": [
+        1,
+        3,
+        768,
+        1280
+      ]
+    },
+    {
+      "h": 1088,
+      "w": 1920,
+      "oom": false,
+      "peak_alloc": 2.9200820922851562,
+      "peak_reserved": 5.4140625,
+      "padded": [
+        1,
+        3,
+        1152,
+        1920
+      ]
+    },
+    {
+      "h": 1408,
+      "w": 2560,
+      "oom": false,
+      "peak_alloc": 4.732616424560547,
+      "peak_reserved": 8.765625,
+      "padded": [
+        1,
+        3,
+        1408,
+        2560
+      ]
+    },
+    {
+      "h": 2160,
+      "w": 3840,
+      "oom": false,
+      "peak_alloc": 10.937000274658203,
+      "peak_reserved": 19.66796875,
+      "padded": [
+        1,
+        3,
+        2176,
+        3840
+      ]
+    }
+  ]
+}

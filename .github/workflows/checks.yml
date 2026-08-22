@@ -57,6 +57,11 @@ jobs:
       - name: Prose numbers match the committed CSVs
         run: python scripts/check_report.py --numbers
 
+      - name: Determinism and footprint tables match their artifacts
+        # These two tables went stale three separate times during writing,
+        # because unlike the reproduction they had no committed source of truth.
+        run: python scripts/check_report.py --tables
+
       - name: Writing conventions
         # No em dashes, en dashes or semicolons in prose. A deliberate house
         # style for this repository, easy to reintroduce by accident.

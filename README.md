@@ -312,7 +312,7 @@ Five real test images, five forward passes each, runs 2 to 5 compared against ru
 
 | Mode | RNG reset per forward | Identical | Max pixel delta | Pairwise PSNR |
 |---|---|---|---|---|
-| Natural inference, as released | no | **no** | 0.008 to 0.135 | 58.59 to 65.17 dB |
+| Natural inference, as released | no | **no** | 0.007 to 0.049 | 59.09 to 64.19 dB |
 | Exact RNG replay | yes | yes, bit-identical | 0.000 | inf |
 | Deterministic argmax routing | n/a | yes, bit-identical | 0.000 | inf |
 
@@ -355,14 +355,16 @@ after 5 warmup passes, fp32:
 
 | Input | Padded | Mpix | CUDA-event median | Working set | GiB per Mpix | Reserved |
 |---|---|---|---|---|---|---|
-| 1280x768 | 1280x768 | 0.98 | 102.06 ms | 1.31 GiB | 1.337 | 9.37 GiB |
-| 1920x1088 | 1920x1152 | 2.21 | 286.70 ms | 2.92 GiB | 1.320 | 17.68 GiB |
-| 2560x1408 | 2560x1408 | 3.60 | 547.57 ms | 4.73 GiB | 1.313 | 18.20 GiB |
-| **3840x2160** | **3840x2176** | 8.36 | **1346.85 ms** | **10.94 GiB** | 1.309 | **19.54 GiB** |
+| 1280x768 | 1280x768 | 0.98 | 102.21 ms | 1.31 GiB | 1.337 | 9.37 GiB |
+| 1920x1088 | 1920x1152 | 2.21 | 287.31 ms | 2.92 GiB | 1.320 | 17.68 GiB |
+| 2560x1408 | 2560x1408 | 3.60 | 548.25 ms | 4.73 GiB | 1.313 | 18.20 GiB |
+| **3840x2160** | **3840x2176** | 8.36 | **1347.73 ms** | **10.94 GiB** | 1.309 | **19.54 GiB** |
 
 Latency and working set come from separate invocations (`--mode latency` and `--mode memory`)
 because they need opposite settings of `cudnn.benchmark` and contaminate each other in one
-process. Running both together cost about 1.5% on the 4K timing, which is larger than the
+process. Both are backed by [`results/footprint_latency.json`](results/footprint_latency.json) and
+[`results/footprint_memory.json`](results/footprint_memory.json), which `scripts/check_report.py`
+verifies this table against. Running both together cost about 1.5% on the 4K timing, which is larger than the
 group-to-group spread, so the script now warns when you do that.
 
 Peak allocation is linear in pixel count at **1.31 GiB per Mpix**, holding to within 2% across an
@@ -375,8 +377,8 @@ is 10.94 GiB, but with `cudnn.benchmark = True` the allocator reserves 19.54 GiB
 what determines whether the run fits.
 
 Wall clock and CUDA-event timings agree to within 0.02% at every resolution, and group-to-group
-spread at 4K is 0.79 ms out of 1347 ms. An earlier, separately written harness measured the same 4K
-forward at 1347.89 ms, which is 0.08% from the figure above. Harness sanity check first, on the principle that something
+spread at 4K is under 1 ms out of 1348 ms. An earlier, separately written harness measured the
+same 4K forward at 1347.89 ms, within 0.02% of the figure above. Harness sanity check first, on the principle that something
 which cannot recover a known cost should not be trusted on an unknown one: an 8192-cubed fp16 matmul
 reaches 161.4 TFLOPS, in line with this card's specification.
 

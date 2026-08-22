@@ -1,0 +1,75 @@
+{
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "torch": "2.6.0+cu124",
+  "mode": "latency",
+  "groups": 5,
+  "iters": 5,
+  "warmup": 5,
+  "tflops_check": 159.34433132947262,
+  "rows": [
+    {
+      "h": 768,
+      "w": 1280,
+      "oom": false,
+      "peak_alloc_bench": 9.28056526184082,
+      "peak_reserved_bench": 9.365234375,
+      "event_median": 102.20636749267578,
+      "group_spread": 0.03910064697265625,
+      "wall_median": 102.22567399978288,
+      "padded": [
+        1,
+        3,
+        768,
+        1280
+      ]
+    },
+    {
+      "h": 1088,
+      "w": 1920,
+      "oom": false,
+      "peak_alloc_bench": 15.641347885131836,
+      "peak_reserved_bench": 17.6796875,
+      "event_median": 287.30572509765625,
+      "group_spread": 0.229095458984375,
+      "wall_median": 287.293019999197,
+      "padded": [
+        1,
+        3,
+        1152,
+        1920
+      ]
+    },
+    {
+      "h": 1408,
+      "w": 2560,
+      "oom": false,
+      "peak_alloc_bench": 16.78436851501465,
+      "peak_reserved_bench": 18.197265625,
+      "event_median": 548.2486572265625,
+      "group_spread": 0.26629638671875,
+      "wall_median": 548.2360049991257,
+      "padded": [
+        1,
+        3,
+        1408,
+        2560
+      ]
+    },
+    {
+      "h": 2160,
+      "w": 3840,
+      "oom": false,
+      "peak_alloc_bench": 15.278604507446289,
+      "peak_reserved_bench": 19.5390625,
+      "event_median": 1347.7344970703125,
+      "group_spread": 1.191162109375,
+      "wall_median": 1347.6714429998538,
+      "padded": [
+        1,
+        3,
+        2176,
+        3840
+      ]
+    }
+  ]
+}

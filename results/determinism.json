@@ -1,0 +1,160 @@
+{
+  "n_images": 5,
+  "passes": 5,
+  "images": [
+    "1003_UHD_LL.JPG",
+    "1453_UHD_LL.JPG",
+    "1778_UHD_LL.JPG",
+    "28_UHD_LL.JPG",
+    "674_UHD_LL.JPG"
+  ],
+  "aggregate": {
+    "A": {
+      "label": "Natural inference, as released",
+      "rng_reset": "no",
+      "identical": false,
+      "max_lo": 0.007471755146980286,
+      "max_hi": 0.04861988127231598,
+      "mean": 0.000539919470611494,
+      "psnr_lo": 59.08648783468111,
+      "psnr_hi": 64.19088429449488
+    },
+    "B": {
+      "label": "Exact RNG replay",
+      "rng_reset": "yes",
+      "identical": true,
+      "max_lo": 0.0,
+      "max_hi": 0.0,
+      "mean": 0.0,
+      "psnr_lo": Infinity,
+      "psnr_hi": Infinity
+    },
+    "C": {
+      "label": "Deterministic argmax routing",
+      "rng_reset": "n/a",
+      "identical": true,
+      "max_lo": 0.0,
+      "max_hi": 0.0,
+      "mean": 0.0,
+      "psnr_lo": Infinity,
+      "psnr_hi": Infinity
+    }
+  },
+  "per_image": {
+    "1003_UHD_LL.JPG": {
+      "A": {
+        "identical": false,
+        "max_lo": 0.04081413149833679,
+        "max_hi": 0.04861988127231598,
+        "mean": 0.0007010030967649072,
+        "psnr": 59.77564687142801
+      },
+      "B": {
+        "identical": true,
+        "max_lo": 0.0,
+        "max_hi": 0.0,
+        "mean": 0.0,
+        "psnr": Infinity
+      },
+      "C": {
+        "identical": true,
+        "max_lo": 0.0,
+        "max_hi": 0.0,
+        "mean": 0.0,
+        "psnr": Infinity
+      }
+    },
+    "1453_UHD_LL.JPG": {
+      "A": {
+        "identical": false,
+        "max_lo": 0.014587104320526123,
+        "max_hi": 0.015553057193756104,
+        "mean": 0.00042189035593764856,
+        "psnr": 64.19088429449488
+      },
+      "B": {
+        "identical": true,
+        "max_lo": 0.0,
+        "max_hi": 0.0,
+        "mean": 0.0,
+        "psnr": Infinity
+      },
+      "C": {
+        "identical": true,
+        "max_lo": 0.0,
+        "max_hi": 0.0,
+        "mean": 0.0,
+        "psnr": Infinity
+      }
+    },
+    "1778_UHD_LL.JPG": {
+      "A": {
+        "identical": false,
+        "max_lo": 0.009932398796081543,
+        "max_hi": 0.011476904153823853,
+        "mean": 0.0005530594862648286,
+        "psnr": 60.36007137244038
+      },
+      "B": {
+        "identical": true,
+        "max_lo": 0.0,
+        "max_hi": 0.0,
+        "mean": 0.0,
+        "psnr": Infinity
+      },
+      "C": {
+        "identical": true,
+        "max_lo": 0.0,
+        "max_hi": 0.0,
+        "mean": 0.0,
+        "psnr": Infinity
+      }
+    },
+    "28_UHD_LL.JPG": {
+      "A": {
+        "identical": false,
+        "max_lo": 0.01012951135635376,
+        "max_hi": 0.018638193607330322,
+        "mean": 0.0005709003453375772,
+        "psnr": 59.08648783468111
+      },
+      "B": {
+        "identical": true,
+        "max_lo": 0.0,
+        "max_hi": 0.0,
+        "mean": 0.0,
+        "psnr": Infinity
+      },
+      "C": {
+        "identical": true,
+        "max_lo": 0.0,
+        "max_hi": 0.0,
+        "mean": 0.0,
+        "psnr": Infinity
+      }
+    },
+    "674_UHD_LL.JPG": {
+      "A": {
+        "identical": false,
+        "max_lo": 0.007471755146980286,
+        "max_hi": 0.011547371745109558,
+        "mean": 0.0004527440687525086,
+        "psnr": 62.44239933345437
+      },
+      "B": {
+        "identical": true,
+        "max_lo": 0.0,
+        "max_hi": 0.0,
+        "mean": 0.0,
+        "psnr": Infinity
+      },
+      "C": {
+        "identical": true,
+        "max_lo": 0.0,
+        "max_hi": 0.0,
+        "mean": 0.0,
+        "psnr": Infinity
+      }
+    }
+  }
+}

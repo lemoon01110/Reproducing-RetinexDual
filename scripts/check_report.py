@@ -145,19 +145,81 @@ def check_numbers():
     return not problems
 
 
+def check_tables():
+    """Verify the determinism and footprint tables against their JSON artifacts.
+
+    These two went stale three separate times while this report was being
+    written, because unlike the reproduction they had no committed source of
+    truth to check against. Now they do.
+    """
+    import json
+    problems = []
+    readme = (ROOT / "README.md").read_text()
+    det_md = (ROOT / "DETERMINISM.md").read_text()
+
+    det_p = ROOT / "results" / "determinism.json"
+    if not det_p.exists():
+        problems.append("results/determinism.json missing")
+    else:
+        d = json.loads(det_p.read_text())
+        a = d["aggregate"]["A"]
+        span = f"{a['max_lo']:.3f} to {a['max_hi']:.3f}"
+        psnr = f"{a['psnr_lo']:.2f} to {a['psnr_hi']:.2f}"
+        for doc, name in ((readme, "README.md"), (det_md, "DETERMINISM.md")):
+            if span not in doc:
+                problems.append(f"{name} does not state the max-delta span '{span}'")
+            if psnr not in doc:
+                problems.append(f"{name} does not state the pairwise PSNR span '{psnr}'")
+        if d["aggregate"]["B"]["identical"] is not True:
+            problems.append("determinism.json says RNG replay is NOT bit-identical, "
+                            "which contradicts the whole argument")
+        for img, per in d["per_image"].items():
+            row = f"`{img}` | {per['A']['max_hi']:.4f}"
+            if row not in det_md:
+                problems.append(f"DETERMINISM.md per-image row for {img} does not match the artifact")
+
+    for tag, fname in (("latency", "footprint_latency.json"), ("memory", "footprint_memory.json")):
+        fp = ROOT / "results" / fname
+        if not fp.exists():
+            problems.append(f"results/{fname} missing")
+            continue
+        f = json.loads(fp.read_text())
+        big = [r for r in f["rows"] if not r["oom"]][-1]
+        if tag == "latency":
+            v = f"{big['event_median']:.2f} ms"
+            if v not in readme:
+                problems.append(f"README does not state the 4K latency '{v}'")
+            r = f"{big['peak_reserved_bench']:.2f} GiB"
+            if r not in readme:
+                problems.append(f"README does not state the 4K reserved memory '{r}'")
+        else:
+            v = f"{big['peak_alloc']:.2f} GiB"
+            if v not in readme:
+                problems.append(f"README does not state the 4K working set '{v}'")
+
+    for p in problems:
+        print(f"  FAIL {p}")
+    print(f"tables: {'FAIL' if problems else 'ok'} "
+          f"(determinism and footprint checked against results/*.json)")
+    return not problems
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--links", action="store_true")
     ap.add_argument("--numbers", action="store_true")
     ap.add_argument("--style", action="store_true")
+    ap.add_argument("--tables", action="store_true")
     args = ap.parse_args()
 
-    run_all = not (args.links or args.numbers or args.style)
+    run_all = not (args.links or args.numbers or args.style or args.tables)
     ok = True
     if run_all or args.links:
         ok &= check_links()
     if run_all or args.numbers:
         ok &= check_numbers()
+    if run_all or args.tables:
+        ok &= check_tables()
     if run_all or args.style:
         ok &= check_style()
     return 0 if ok else 1
