@@ -1,0 +1,11 @@
+{
+  "n_images": 20,
+  "upstream_psnr": 28.101571,
+  "upstream_ssim": 0.913121,
+  "repo_psnr": 28.085740570006617,
+  "repo_ssim": 0.9131094674503125,
+  "psnr_diff": 0.015830429993382467,
+  "ssim_diff": 1.1532549687442994e-05,
+  "psnr_gap_sigma": 1.7262143144459599,
+  "agree": true
+}

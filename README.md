@@ -99,6 +99,28 @@ implementation are all ruled out. What produced 0.934 is not any member of eithe
 could not find it. **This is the one question I would put to the authors.** I am not claiming the
 paper is wrong.
 
+### Is the evaluation harness itself right
+
+The deepest objection to a reproduction is not that a metric is defined differently, it is that the
+harness might be wrong in a way that happens to land near the published number. The answer is to run
+the authors' own `inference_RetinexDual.py` on a subset and compare, which
+[`scripts/cross_harness.py`](scripts/cross_harness.py) does:
+
+| | upstream's script | this repository | difference |
+|---|---|---|---|
+| PSNR | 28.101571 | 28.085741 | 0.0158 dB |
+| SSIM | 0.913121 | 0.913109 | **0.000012** |
+
+Twenty paired images. **SSIM agrees to five decimal places.** PSNR does not agree exactly and should
+not: routing is stochastic and the two scripts seed differently, upstream once at import and this one
+per pass. The per-image run-to-run spread is 0.029 dB, which gives a 20-image mean an sd of
+0.0065 dB and a two-run gap an sd of 0.0092 dB, so the observed 0.0158 dB is **1.7 sigma**. That is
+an ordinary draw, not a discrepancy.
+
+So this repository's evaluation reproduces the numbers the authors' own script produces on the same
+images, using a different implementation. Recorded in
+[`results/cross_harness.json`](results/cross_harness.json).
+
 Raw data: [`results/reproduction_seeds.csv`](results/reproduction_seeds.csv) (5 rows, one per seed)
 and [`results/reproduction_per_image.csv`](results/reproduction_per_image.csv) (150 rows).
 
@@ -612,6 +634,7 @@ tolerance is made impossible, which confirms the check is not vacuous).
 | [`scripts/verify_glibc.py`](scripts/verify_glibc.py) | reads each wheel's ELF symbols to confirm its glibc floor |
 | [`scripts/test_metrics.py`](scripts/test_metrics.py) | pins the metric implementations against references |
 | [`scripts/test_aggregation.py`](scripts/test_aggregation.py) | tests whether aggregation explains the SSIM gap |
+| [`scripts/cross_harness.py`](scripts/cross_harness.py) | compares this evaluation against the authors' own inference script |
 | [`scripts/check_report.py`](scripts/check_report.py) | guards links, structure, prose-vs-artifact numbers and conventions |
 
 **Figures**
