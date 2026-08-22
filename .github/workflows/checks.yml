@@ -70,6 +70,19 @@ jobs:
         # allocation behaviour cannot quietly falsify the claim.
         run: python scripts/check_report.py --scaling
 
+      - name: Report's claims still describe the pinned commit
+        # Fetches the real upstream files and re-tests each claimed defect.
+        # Blocking: the report describes a specific commit and must describe it
+        # accurately, so a failure here is a factual error in this repository.
+        run: python scripts/verify_defects.py --pinned
+
+      - name: Has upstream fixed anything since
+        # Informational. A failure means upstream moved, which is not a bug here,
+        # but the report should then note which defects were later fixed rather
+        # than keep asserting them against a repository that no longer has them.
+        continue-on-error: true
+        run: python scripts/verify_defects.py --head
+
       - name: Writing conventions
         # No em dashes, en dashes or semicolons in prose. A deliberate house
         # style for this repository, easy to reintroduce by accident.

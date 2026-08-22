@@ -150,6 +150,16 @@ Stated explicitly, because PSNR is only comparable when the protocol is:
 All three are in the released repository as of commit `9feec2c`. They are independent, and you hit
 them in this order.
 
+**These claims re-verify themselves.** [`scripts/verify_defects.py`](scripts/verify_defects.py)
+fetches the real upstream files from GitHub and re-tests each defect in this section and the next,
+including the exact line number cited for `setup.py` and whether `gumbel_softmax` has acquired an
+eval-mode guard. CI runs it against the pinned commit on every push, so a factual error here fails
+the build. It also runs against upstream `master` as a non-blocking check, because criticising a
+repository for a defect its authors have since fixed would be unfair, and this report should notice
+when that happens rather than wait to be told.
+
+As of the most recent run, all five claims still hold on `master` as well as at the pinned commit.
+
 ### 2.1 `requirements.txt` cannot be installed as written
 
 The file pins these three lines together:
@@ -625,6 +635,7 @@ tolerance is made impossible, which confirms the check is not vacuous).
 | [`scripts/measure_footprint.py`](scripts/measure_footprint.py) | regenerates the memory and latency table in section 5 |
 | [`scripts/make_figure.py`](scripts/make_figure.py) | renders the PSNR figure from the committed CSVs |
 | [`scripts/make_qualitative.py`](scripts/make_qualitative.py) | renders the worst/median/best image strip |
+| [`scripts/verify_defects.py`](scripts/verify_defects.py) | re-tests every claimed defect against the live upstream repository |
 | [`scripts/check_report.py`](scripts/check_report.py) | guards links, prose-vs-artifact numbers, figure provenance, and writing conventions |
 | [`CITATION.cff`](CITATION.cff) | citation metadata, with the RetinexDual paper listed as the work reproduced |
 | [`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) | scores outputs under six SSIM conventions |
