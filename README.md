@@ -182,7 +182,8 @@ ImportError: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.32' not found
     (required by .../selective_scan_cuda.cpython-311-x86_64-linux-gnu.so)
 ```
 
-Those wheels are built on newer CI runners. Maximum required glibc symbol, measured per wheel:
+Those wheels are built on newer CI runners. Maximum required glibc symbol, read from each wheel's
+ELF dynamic symbol table by [`scripts/verify_glibc.py`](scripts/verify_glibc.py):
 
 | Wheel | Requires | Loads on glibc 2.31 |
 |---|---|---|
@@ -193,6 +194,12 @@ Those wheels are built on newer CI runners. Maximum required glibc symbol, measu
 
 Ubuntu 20.04 ships glibc 2.31. It is still a very common deployment target and it is what this
 machine runs.
+
+That table is measured rather than quoted. The script downloads each wheel, extracts the compiled
+extension, and reads the versioned symbol references, so the highest `GLIBC_x.y` a binary references
+is the oldest glibc that can load it. Result recorded in
+[`results/glibc_audit.json`](results/glibc_audit.json). It is not run in CI because the four
+downloads are large.
 
 **Resolution used here: pin torch to 2.6.0 and keep the repository's exact pinned kernel versions.**
 This moves only torch and leaves `mamba_ssm` and `causal_conv1d` at exactly the versions the authors

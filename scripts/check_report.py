@@ -245,6 +245,20 @@ def check_tables():
             if c["sgm_forward_calls"] != 0:
                 problems.append(f"SGM forward calls is {c['sgm_forward_calls']}, not 0")
 
+        # glibc floors, measured from the wheels rather than quoted.
+        ga = ROOT / "results" / "glibc_audit.json"
+        if not ga.exists():
+            problems.append("results/glibc_audit.json missing")
+        else:
+            g = json.loads(ga.read_text())
+            if not g["claim_holds"]:
+                problems.append("glibc_audit.json says the torch2.7/torch2.6 split does not hold, "
+                                "which contradicts README section 2.2")
+            for w in g["wheels"]:
+                frag = f"GLIBC_{w['requires_glibc']}"
+                if frag not in all_docs:
+                    problems.append(f"no document states {frag} for {w['package']} {w['version']}")
+
         if sj["n_images"] < 150:
             problems.append(f"ssim_protocols.json is a partial run ({sj['n_images']} images). "
                             f"The published table must come from the full set.")

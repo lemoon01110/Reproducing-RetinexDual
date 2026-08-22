@@ -1,0 +1,50 @@
+{
+  "host_glibc": "2.31",
+  "claim_holds": true,
+  "wheels": [
+    {
+      "package": "mamba_ssm",
+      "version": "2.3.0",
+      "torch": "torch2.7",
+      "so": "selective_scan_cuda.cpython-311-x86_64-linux-gnu.so",
+      "so_bytes": 688264928,
+      "requires_glibc": "2.32",
+      "symbol_refs": 14,
+      "read_with": "readelf",
+      "loads_on_host": false
+    },
+    {
+      "package": "mamba_ssm",
+      "version": "2.2.4",
+      "torch": "torch2.6",
+      "so": "selective_scan_cuda.cpython-311-x86_64-linux-gnu.so",
+      "so_bytes": 444538312,
+      "requires_glibc": "2.14",
+      "symbol_refs": 14,
+      "read_with": "readelf",
+      "loads_on_host": true
+    },
+    {
+      "package": "causal_conv1d",
+      "version": "1.6.0",
+      "torch": "torch2.7",
+      "so": "causal_conv1d_cuda.cpython-311-x86_64-linux-gnu.so",
+      "so_bytes": 425196816,
+      "requires_glibc": "2.32",
+      "symbol_refs": 15,
+      "read_with": "readelf",
+      "loads_on_host": false
+    },
+    {
+      "package": "causal_conv1d",
+      "version": "1.5.0.post8",
+      "torch": "torch2.6",
+      "so": "causal_conv1d_cuda.cpython-311-x86_64-linux-gnu.so",
+      "so_bytes": 177422840,
+      "requires_glibc": "2.14",
+      "symbol_refs": 14,
+      "read_with": "readelf",
+      "loads_on_host": true
+    }
+  ]
+}
