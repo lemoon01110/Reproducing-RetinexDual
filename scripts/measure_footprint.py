@@ -57,37 +57,51 @@ def sanity_check():
     return (2 * n ** 3) / (ms / 1000) / 1e12, ms
 
 
-def measure(model, h, w, groups, iters, warmup):
-    x = check_image_size(torch.rand(1, 3, h, w, device="cuda"))
+def measure(model, h, w, groups, iters, warmup, mode="both"):
+    """Measure latency, memory, or both.
 
-    # Memory is measured with cudnn.benchmark OFF, in its own pass.
-    #
-    # With benchmark ON, cuDNN trials many convolution algorithms and their
-    # scratch buffers land in max_memory_allocated, so the figure reflects the
-    # algorithm search rather than the model's working set. That is not a
-    # hypothetical: measured with benchmark ON, peak allocated came out
-    # non-monotonic in resolution (15.64 GiB at 1920x1152 against 15.28 GiB at
-    # 3840x2176), which cannot be a real working set. cuDNN simply declines the
-    # larger workspaces once they stop fitting.
-    prev = torch.backends.cudnn.benchmark
-    torch.backends.cudnn.benchmark = False
+    These want opposite settings of cudnn.benchmark and cannot share a process
+    cleanly, which is why --mode exists.
+
+    Memory needs benchmark OFF. With it ON, cuDNN trials many convolution
+    algorithms and their scratch buffers land in max_memory_allocated, so the
+    figure reflects the algorithm search rather than the model's working set.
+    Measured with benchmark ON, peak allocated came out non-monotonic in
+    resolution (15.64 GiB at 1920x1152 against 15.28 GiB at 3840x2176), which
+    cannot be a real working set. With it OFF the same sweep is linear at about
+    1.31 GiB per Mpix.
+
+    Latency needs benchmark ON, since that is what the reproduction runs under.
+    But torch caches the chosen algorithm per shape, so a benchmark-OFF pass
+    first leaves a heuristic choice cached and flipping the flag back does not
+    re-trigger the search. Doing both in one process cost about 1.5% on the 4K
+    timing (1368.87 ms against 1348.49 ms from a clean run). Run the two modes
+    as separate invocations for numbers you intend to publish.
+    """
+    x = check_image_size(torch.rand(1, 3, h, w, device="cuda"))
+    out = {"padded": tuple(x.shape)}
+
+    if mode in ("memory", "both"):
+        prev = torch.backends.cudnn.benchmark
+        torch.backends.cudnn.benchmark = False
+        torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
+        forward_once(model, x)
+        torch.cuda.synchronize()
+        out["peak_alloc"] = torch.cuda.max_memory_allocated() / 2 ** 30
+        out["peak_reserved"] = torch.cuda.max_memory_reserved() / 2 ** 30
+        torch.backends.cudnn.benchmark = prev
+        if mode == "memory":
+            return out
+
     torch.cuda.empty_cache()
     torch.cuda.reset_peak_memory_stats()
-    forward_once(model, x)
-    torch.cuda.synchronize()
-    peak_alloc = torch.cuda.max_memory_allocated() / 2 ** 30
-    peak_resv = torch.cuda.max_memory_reserved() / 2 ** 30
-    torch.backends.cudnn.benchmark = prev
-
-    # Latency is measured with benchmark ON, which is the configuration the
-    # reproduction actually runs under.
-    torch.cuda.empty_cache()
     for _ in range(warmup):
         forward_once(model, x)
     torch.cuda.synchronize()
 
-    peak_alloc_bench = torch.cuda.max_memory_allocated() / 2 ** 30
-    peak_resv_bench = torch.cuda.max_memory_reserved() / 2 ** 30
+    out["peak_alloc_bench"] = torch.cuda.max_memory_allocated() / 2 ** 30
+    out["peak_reserved_bench"] = torch.cuda.max_memory_reserved() / 2 ** 30
 
     group_medians, wall_all = [], []
     for _ in range(groups):
@@ -103,16 +117,10 @@ def measure(model, h, w, groups, iters, warmup):
             ev.append(s.elapsed_time(e))
         group_medians.append(st.median(ev))
 
-    return {
-        "padded": tuple(x.shape),
-        "event_median": st.median(group_medians),
-        "group_spread": max(group_medians) - min(group_medians),
-        "wall_median": st.median(wall_all),
-        "peak_alloc": peak_alloc,
-        "peak_reserved": peak_resv,
-        "peak_alloc_bench": peak_alloc_bench,
-        "peak_reserved_bench": peak_resv_bench,
-    }
+    out["event_median"] = st.median(group_medians)
+    out["group_spread"] = max(group_medians) - min(group_medians)
+    out["wall_median"] = st.median(wall_all)
+    return out
 
 
 def main():
@@ -124,6 +132,10 @@ def main():
     ap.add_argument("--warmup", type=int, default=5)
     ap.add_argument("--sweep", action="store_true",
                     help="also measure smaller resolutions to show how peak memory scales")
+    ap.add_argument("--mode", choices=["both", "memory", "latency"], default="both",
+                    help="latency and memory want opposite cudnn.benchmark settings and "
+                         "contaminate each other within one process. Use separate "
+                         "invocations for numbers you intend to publish")
     args = ap.parse_args()
 
     repo = os.path.abspath(os.path.expanduser(args.repo))
@@ -168,19 +180,26 @@ def main():
     for h, w in resolutions:
         print(f"[measure] {w}x{h}", flush=True)
         try:
-            r = measure(model, h, w, args.groups, args.iters, args.warmup)
+            r = measure(model, h, w, args.groups, args.iters, args.warmup, args.mode)
         except torch.cuda.OutOfMemoryError:
             print("           OOM", flush=True)
             rows.append((h, w, None))
             torch.cuda.empty_cache()
             continue
         rows.append((h, w, r))
-        print(f"           {r['event_median']:.2f} ms, peak alloc {r['peak_alloc']:.2f} GiB", flush=True)
+        bits = []
+        if "event_median" in r:
+            bits.append(f"{r['event_median']:.2f} ms")
+        if "peak_alloc" in r:
+            bits.append(f"peak alloc {r['peak_alloc']:.2f} GiB")
+        print(f"           {', '.join(bits)}", flush=True)
 
-    print(f"\n{gpu}, torch {torch.__version__}, fp32, cudnn.benchmark=True")
+    print(f"\n{gpu}, torch {torch.__version__}, fp32, mode={args.mode}")
     print(f"{args.groups} groups x {args.iters} iterations, {args.warmup} warmup\n")
-    print("Peak allocated is measured with cudnn.benchmark OFF (the model's working set).")
-    print("Latency is measured with cudnn.benchmark ON. See the note in measure().\n")
+
+    def cell(r, key, fmt, unit=""):
+        return f"{r[key]:{fmt}}{unit}" if key in r else "n/a"
+
     print("| Input | Padded | Mpix | CUDA-event median | Wall median | Peak allocated | Reserved (benchmark on) |")
     print("|---|---|---|---|---|---|---|")
     for h, w, r in rows:
@@ -189,21 +208,35 @@ def main():
             continue
         ph, pw = r["padded"][2], r["padded"][3]
         print(f"| {w}x{h} | {pw}x{ph} | {(ph * pw) / 1e6:.2f} | "
-              f"**{r['event_median']:.2f} ms** | {r['wall_median']:.2f} ms | "
-              f"**{r['peak_alloc']:.2f} GiB** | {r['peak_reserved_bench']:.2f} GiB |")
+              f"**{cell(r, 'event_median', '.2f', ' ms')}** | {cell(r, 'wall_median', '.2f', ' ms')} | "
+              f"**{cell(r, 'peak_alloc', '.2f', ' GiB')}** | {cell(r, 'peak_reserved_bench', '.2f', ' GiB')} |")
 
     ok = [(h, w, r) for h, w, r in rows if r]
     if ok:
         print()
         for h, w, r in ok:
             ph, pw = r["padded"][2], r["padded"][3]
-            print(f"{pw}x{ph}: {r['peak_alloc'] / ((ph * pw) / 1e6):.3f} GiB per Mpix working set, "
-                  f"group-to-group spread {r['group_spread']:.2f} ms, "
-                  f"wall vs event {abs(r['wall_median'] - r['event_median']) / r['event_median'] * 100:.2f}%")
+            parts = [f"{pw}x{ph}:"]
+            if "peak_alloc" in r:
+                parts.append(f"{r['peak_alloc'] / ((ph * pw) / 1e6):.3f} GiB per Mpix working set,")
+            if "event_median" in r:
+                parts.append(f"group-to-group spread {r['group_spread']:.2f} ms,")
+                parts.append(f"wall vs event "
+                             f"{abs(r['wall_median'] - r['event_median']) / r['event_median'] * 100:.2f}%")
+            print(" ".join(parts).rstrip(","))
         big = ok[-1][2]
-        print(f"\nWorking set at the largest resolution: {big['peak_alloc']:.2f} GiB allocated.")
-        print(f"With cudnn.benchmark on, the allocator reserves {big['peak_reserved_bench']:.2f} GiB, "
-              f"which is the figure that decides whether a card holds this workload.")
+        print()
+        if "peak_alloc" in big:
+            print(f"Working set at the largest resolution: {big['peak_alloc']:.2f} GiB allocated.")
+        if "peak_reserved_bench" in big:
+            print(f"With cudnn.benchmark on the allocator reserves "
+                  f"{big['peak_reserved_bench']:.2f} GiB, which is the figure that decides "
+                  f"whether a card holds this workload.")
+        if args.mode == "both":
+            print()
+            print("NOTE: mode=both. The benchmark-off memory pass leaves a heuristic algorithm")
+            print("cached, which costs roughly 1.5% on the 4K timing. Re-run with --mode latency")
+            print("for a timing number you intend to publish.")
 
 
 if __name__ == "__main__":

@@ -301,26 +301,38 @@ Full detail, including checksums and the reasoning behind each version choice, i
 Measured by [`scripts/measure_footprint.py`](scripts/measure_footprint.py), 5 groups of 5 iterations
 after 5 warmup passes, fp32:
 
-| Input | Padded | CUDA-event median | Wall median | Reserved |
-|---|---|---|---|---|
-| 1280x768 | 1280x768 | 102.13 ms | 102.14 ms | 9.37 GiB |
-| 1920x1088 | 1920x1152 | 287.21 ms | 287.22 ms | 17.68 GiB |
-| 2560x1408 | 2560x1408 | 547.78 ms | 547.80 ms | 18.09 GiB |
-| **3840x2160** | **3840x2176** | **1348.49 ms** | 1348.27 ms | **19.42 GiB** |
+| Input | Padded | Mpix | CUDA-event median | Working set | GiB per Mpix | Reserved |
+|---|---|---|---|---|---|---|
+| 1280x768 | 1280x768 | 0.98 | 102.06 ms | 1.31 GiB | 1.337 | 9.37 GiB |
+| 1920x1088 | 1920x1152 | 2.21 | 286.70 ms | 2.92 GiB | 1.320 | 17.68 GiB |
+| 2560x1408 | 2560x1408 | 3.60 | 547.57 ms | 4.73 GiB | 1.313 | 18.20 GiB |
+| **3840x2160** | **3840x2176** | 8.36 | **1346.85 ms** | **10.94 GiB** | 1.309 | **19.54 GiB** |
 
-**A card with less than about 20 GiB will not hold whole-image 4K inference here.**
+Latency and working set come from separate invocations (`--mode latency` and `--mode memory`)
+because they need opposite settings of `cudnn.benchmark` and contaminate each other in one
+process. Running both together cost about 1.5% on the 4K timing, which is larger than the
+group-to-group spread, so the script now warns when you do that.
+
+Peak allocation is linear in pixel count at **1.31 GiB per Mpix**, holding to within 2% across an
+8.5x range. That constant was also measured independently on a different GPU (an 8 GB RTX 5070
+Laptop, compute capability 12.0) at 1.31 GiB per Mpix, so it is a property of the model rather than
+of one card.
+
+**A card with less than about 20 GiB will not hold whole-image 4K inference here.** The working set
+is 10.94 GiB, but with `cudnn.benchmark = True` the allocator reserves 19.67 GiB, and reserved is
+what determines whether the run fits.
 
 Wall clock and CUDA-event timings agree to within 0.02% at every resolution, and group-to-group
-spread at 4K is 1.02 ms out of 1348 ms. Harness sanity check first, on the principle that something
+spread at 4K is 0.79 ms out of 1347 ms. An earlier, separately written harness measured the same 4K
+forward at 1347.89 ms, which is 0.08% from the figure above. Harness sanity check first, on the principle that something
 which cannot recover a known cost should not be trusted on an unknown one: an 8192-cubed fp16 matmul
 reaches 161.4 TFLOPS, in line with this card's specification.
 
-One caveat found while measuring, and the reason the table above reports reserved rather than
-allocated memory. With `cudnn.benchmark = True`, peak *allocated* came out non-monotonic in
-resolution (15.64 GiB at 1920x1152 against 15.28 GiB at 3840x2176), which cannot be a real working
-set. cuDNN's algorithm search allocates trial workspaces that land in the peak statistic, and it
-declines the larger ones once they stop fitting. The script now measures the working set in a
-separate pass with benchmark off and reports both.
+One caveat found while measuring, and the reason working set and reserved are reported separately.
+With `cudnn.benchmark = True`, peak *allocated* came out non-monotonic in resolution (15.64 GiB at
+1920x1152 against 15.28 GiB at 3840x2176), which cannot be a real working set. cuDNN's algorithm
+search allocates trial workspaces that land in the peak statistic, and it declines the larger ones
+once they stop fitting. Measured with benchmark off, the same sweep is linear to within 2%.
 
 ---
 

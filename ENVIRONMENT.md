@@ -116,8 +116,9 @@ Recorded explicitly so none of it can later be presented as an optimization win.
 - `model.eval()` together with `torch.inference_mode()`, not merely `no_grad`.
 - Input reflect-padded from 3840x2160 to **3840x2176** by `check_image_size`, a multiple of 128,
   matching `inference_RetinexDual.py`. Output cropped back to 2160 before metrics.
-- Baseline forward pass, stochastic routing as released: **1348.49 ms** median (5 groups of 5
+- Baseline forward pass, stochastic routing as released: **1346.85 ms** median (5 groups of 5
   iterations, CUDA-event timing, wall clock agreeing to 0.02%).
-- The allocator reserves **19.42 GiB** at 3840x2176, so a card with less than about 20 GiB will not
-  hold whole-image 4K inference. See the caveat in README section 5 about why peak *allocated* is
-  not the right figure to quote when `cudnn.benchmark` is on.
+- The working set is **10.94 GiB** at 3840x2176 and the allocator reserves **19.54 GiB**, so a card
+  with less than about 20 GiB will not hold whole-image 4K inference. Peak allocation is linear at
+  1.31 GiB per Mpix. See the caveat in README section 5 about why peak allocated is not the right
+  figure to quote while `cudnn.benchmark` is on.
