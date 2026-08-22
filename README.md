@@ -390,8 +390,11 @@ Full detail, including checksums and the reasoning behind each version choice, i
 | Weights | `UHD_LL.pth`, sha256 `1977bb77...cae182`, 19,272,064 bytes |
 | Dataset | UHD-LL testing set, 150 pairs, 0 corrupt, 150/150 paired |
 
-Measured by [`scripts/measure_footprint.py`](scripts/measure_footprint.py), 5 groups of 5 iterations
 ### What it costs, and what card you need
+
+Measured by [`scripts/measure_footprint.py`](scripts/measure_footprint.py), 5 groups of 5 iterations
+with 5 warmup passes, latency and memory taken in separate invocations for the reason given in
+[`FOOTPRINT.md`](FOOTPRINT.md).
 
 | | 3840x2176, one forward |
 |---|---|
@@ -505,6 +508,7 @@ python scripts/make_figure.py                                                   
   both lie outside the range where the effect exists.
 - The single largest thing this cannot settle: whether the paper's SSIM protocol matches any of the
   ones tested here. Only the authors can answer that.
+
 ### Which claims travel, and which are about this card
 
 A reader on different hardware needs to know which of these to expect to hold and which not. Marked

@@ -51,6 +51,11 @@ jobs:
               || { echo "FAIL $f --help"; exit 1; }
           done
 
+      - name: Document structure is intact
+        # Extracting sections into their own files twice left a sentence cut in
+        # half and a heading absorbed into a bullet list. Both are cheap to catch.
+        run: python scripts/check_report.py --structure
+
       - name: Internal links resolve
         run: python scripts/check_report.py --links
 

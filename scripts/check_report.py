@@ -55,6 +55,50 @@ def check_style():
     return not bad
 
 
+def check_structure():
+    """Catch the damage that moving prose between documents does.
+
+    Splitting sections into their own files twice left a sentence cut in half,
+    with a heading landing directly after a line of body text and no blank line
+    between. Markdown renders that as a run-on and it reads as a truncation,
+    which is exactly what it was. Both are cheap to detect.
+    """
+    bad = []
+    for name, text in read_docs():
+        lines = text.splitlines()
+        # Comments inside fenced code look exactly like headings, so track fences.
+        fenced, in_code = set(), False
+        for i, line in enumerate(lines):
+            if line.lstrip().startswith("```"):
+                in_code = not in_code
+                fenced.add(i)
+            elif in_code:
+                fenced.add(i)
+        for i, line in enumerate(lines):
+            if i in fenced or not line.startswith("#"):
+                continue
+            if i == 0:
+                continue
+            prev = lines[i - 1]
+            if prev.strip():
+                bad.append(f"{name}:{i + 1} heading directly follows body text, "
+                           f"which usually means a sentence was cut: {prev.strip()[:60]}")
+            elif i >= 2:
+                # A paragraph ending without terminal punctuation right before a
+                # heading is the signature of a truncated extraction.
+                before = next((l for j, l in reversed(list(enumerate(lines[:i - 1])))
+                                if l.strip() and j not in fenced), "")
+                b = before.strip()
+                if (b and not b.endswith((".", ":", "|", "`", ")", "]", "-", '"'))
+                        and not b.startswith(("|", "#", ">", "-", "*"))):
+                    bad.append(f"{name}:{i + 1} paragraph before this heading ends without "
+                               f"punctuation: {b[-60:]}")
+    for b in bad:
+        print(f"  FAIL {b}")
+    print(f"structure: {'FAIL' if bad else 'ok'} ({len(bad)} issues)")
+    return not bad
+
+
 def check_links():
     bad = []
     for name, text in read_docs():
@@ -438,13 +482,16 @@ def main():
     ap.add_argument("--style", action="store_true")
     ap.add_argument("--tables", action="store_true")
     ap.add_argument("--scaling", action="store_true")
+    ap.add_argument("--structure", action="store_true")
     args = ap.parse_args()
 
     run_all = not (args.links or args.numbers or args.style or args.tables
-                   or args.scaling)
+                   or args.scaling or args.structure)
     ok = True
     if run_all or args.links:
         ok &= check_links()
+    if run_all or args.structure:
+        ok &= check_structure()
     if run_all or args.numbers:
         ok &= check_numbers()
     if run_all or args.tables:
