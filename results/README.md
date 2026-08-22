@@ -134,9 +134,14 @@ Before they existed, those tables had no source of truth and went stale repeated
 | `ceiling_default.json` | the OOM boundary in README section 5 | `measure_footprint.py --find-limit` |
 | `ceiling_expandable.json` | the same boundary under `expandable_segments` | `measure_footprint.py --find-limit` |
 
-Two of these reproduce exactly on a re-run and one does not, which is worth knowing before quoting
-them. `ssim_protocols.json` reproduced all three figures to five decimals. `footprint_latency.json`
-moves by well under 1%. `determinism.json`'s **max delta does not reproduce**: consecutive runs over
-the same five images gave 0.008 to 0.135 and 0.007 to 0.049, because the audit fixes no seed and the
-routing is stochastic. Its mean delta and its identical-or-not verdict are stable, and those are
-what the argument in `DETERMINISM.md` rests on.
+How well each reproduces on a re-run, which is worth knowing before quoting one:
+
+- `determinism.json` now reproduces **bit-exactly**, verified by re-running and comparing the whole
+  file. Getting there needed a fixed seed *and* `cudnn.benchmark` off, because benchmark mode
+  re-selects convolution algorithms per process. Earlier unseeded versions gave 0.008 to 0.135 and
+  0.007 to 0.049 over the same images, so anything quoting that older span is quoting noise. See
+  [`../DETERMINISM.md`](../DETERMINISM.md).
+- `ssim_protocols.json` reproduces to five decimals on every protocol.
+- `footprint_latency.json` moves by well under 1%, being a timing measurement.
+- `footprint_memory.json`, `ceiling_*.json` reproduce to within about 0.01 GiB. Allocation is
+  deterministic given the input size, so the residual is allocator bookkeeping rather than noise.
