@@ -91,6 +91,11 @@ def main():
     ap.add_argument("--repo", required=True)
     ap.add_argument("--weights", default=None)
     ap.add_argument("--image", default=None, help="one input image, ideally a real 4K low-light frame")
+    ap.add_argument("--image-dir", default=None,
+                    help="directory of inputs. Runs the audit on several and reports the "
+                         "spread, so the result does not rest on one image")
+    ap.add_argument("--n-images", type=int, default=5,
+                    help="how many images to sample from --image-dir, evenly spaced")
     ap.add_argument("--synthetic", action="store_true", help="use a random 3840x2160 input instead")
     ap.add_argument("--passes", type=int, default=5)
     args = ap.parse_args()
@@ -120,63 +125,93 @@ def main():
     missing, unexpected = model.load_state_dict(sd, strict=False)
     print(f"[load] missing={len(missing)} unexpected={len(unexpected)}", flush=True)
 
-    if args.image:
-        import cv2
-        img = cv2.imread(os.path.expanduser(args.image), cv2.IMREAD_UNCHANGED)
+    import cv2
+
+    def load(path):
+        img = cv2.imread(os.path.expanduser(path), cv2.IMREAD_UNCHANGED)
         if img is None:
-            raise SystemExit(f"could not read {args.image}")
-        x = (img2tensor(img).cuda() / 255.0).unsqueeze(0)
-        src = os.path.basename(args.image)
+            raise SystemExit(f"could not read {path}")
+        return check_image_size((img2tensor(img).cuda() / 255.0).unsqueeze(0)), os.path.basename(path)
+
+    inputs = []
+    if args.image_dir:
+        d = os.path.expanduser(args.image_dir)
+        names = sorted(n for n in os.listdir(d)
+                       if n.lower().endswith((".png", ".jpg", ".jpeg", ".bmp")))
+        if not names:
+            raise SystemExit(f"no images in {d}")
+        # Evenly spaced rather than the first N, so the sample is not all one scene.
+        step = max(1, len(names) // args.n_images)
+        picked = names[::step][:args.n_images]
+        inputs = [load(os.path.join(d, n)) for n in picked]
+    elif args.image:
+        inputs = [load(args.image)]
     elif args.synthetic:
         torch.manual_seed(0)
-        x = torch.rand(1, 3, 2160, 3840, device="cuda")
-        src = "synthetic 3840x2160"
+        inputs = [(check_image_size(torch.rand(1, 3, 2160, 3840, device="cuda")),
+                   "synthetic 3840x2160")]
     else:
-        raise SystemExit("pass --image or --synthetic")
+        raise SystemExit("pass --image, --image-dir or --synthetic")
 
-    x = check_image_size(x)
-    print(f"[input] {src}, padded to {tuple(x.shape)}", flush=True)
+    print(f"[input] {len(inputs)} image(s), padded to {tuple(inputs[0][0].shape)}", flush=True)
 
     print("[warmup]", flush=True)
     for _ in range(2):
-        forward_once(model, x)
+        forward_once(model, inputs[0][0])
     torch.cuda.synchronize()
 
     modes = [("A", "natural", "Natural inference, as released", "no"),
              ("B", "replay", "Exact RNG replay", "yes"),
              ("C", "argmax", "Deterministic argmax routing", "n/a")]
 
-    results = []
-    for tag, mode, label, reset in modes:
-        print(f"[run] {tag} {label}", flush=True)
-        r = run_experiment(model, x, mode, n=args.passes)
-        results.append((tag, label, reset, r))
-        print(f"      identical={r['identical']} max={r['max_hi']:.4f} "
-              f"mean={r['mean']:.2e} psnr={r['psnr']:.2f}", flush=True)
+    per_image = {}
+    for x, src in inputs:
+        print(f"[image] {src}", flush=True)
+        per_image[src] = {}
+        for tag, mode, label, reset in modes:
+            r = run_experiment(model, x, mode, n=args.passes)
+            per_image[src][tag] = r
+            print(f"   {tag} identical={r['identical']} max={r['max_hi']:.4f} "
+                  f"mean={r['mean']:.2e} psnr={r['psnr']:.2f}", flush=True)
 
-    print(f"\nInput {src}, padded to {tuple(x.shape)}. {args.passes} passes, "
+    print(f"\n{len(inputs)} image(s), {args.passes} passes each, "
           f"runs 2 to {args.passes} compared against run 1.\n")
-    print("| | Mode | RNG reset per forward | Outputs identical | Max pixel delta | Mean delta | Pairwise PSNR |")
-    print("|---|---|---|---|---|---|---|")
-    for tag, label, reset, r in results:
-        if r["identical"]:
-            ident, delta, mean, psnr = "**yes, bit-identical**", "0.000", "0.000", "inf"
-        else:
-            ident = "**no**"
-            delta = (f"{r['max_lo']:.3f} to {r['max_hi']:.3f}"
-                     if r["max_lo"] != r["max_hi"] else f"{r['max_hi']:.3f}")
-            mean, psnr = f"{r['mean']:.2e}", f"**{r['psnr']:.2f} dB**"
-        print(f"| **{tag}** | {label} | {reset} | {ident} | {delta} | {mean} | {psnr} |")
 
-    a = next(r for t, _, _, r in results if t == "A")
-    b = next(r for t, _, _, r in results if t == "B")
+    print("| | Mode | RNG reset per forward | Outputs identical | Max pixel delta | "
+          "Mean delta | Pairwise PSNR |")
+    print("|---|---|---|---|---|---|---|")
+    for tag, mode, label, reset in modes:
+        rs = [per_image[s][tag] for s in per_image]
+        if all(r["identical"] for r in rs):
+            print(f"| **{tag}** | {label} | {reset} | **yes, bit-identical** | 0.000 | 0.000 | inf |")
+        else:
+            lo = min(r["max_lo"] for r in rs)
+            hi = max(r["max_hi"] for r in rs)
+            mean = sum(r["mean"] for r in rs) / len(rs)
+            plo = min(r["psnr"] for r in rs)
+            phi = max(r["psnr"] for r in rs)
+            psnr = f"**{plo:.2f} dB**" if plo == phi else f"**{plo:.2f} to {phi:.2f} dB**"
+            print(f"| **{tag}** | {label} | {reset} | **no** | {lo:.3f} to {hi:.3f} | "
+                  f"{mean:.2e} | {psnr} |")
+
+    if len(inputs) > 1:
+        print("\nPer image, natural inference (A):\n")
+        print("| image | max delta | mean delta | pairwise PSNR |")
+        print("|---|---|---|---|")
+        for src in per_image:
+            r = per_image[src]["A"]
+            print(f"| `{src}` | {r['max_hi']:.4f} | {r['mean']:.2e} | {r['psnr']:.2f} dB |")
+
+    a = [per_image[s]["A"] for s in per_image]
+    b = [per_image[s]["B"] for s in per_image]
     print()
-    if not a["identical"] and b["identical"]:
-        print("Verdict: A differs, B is bit-identical. Run-to-run variation is attributable")
-        print("entirely to random sampling in the routing path. No kernel-level nondeterminism.")
-    elif a["identical"]:
-        print("Verdict: A did not differ. Either this build suppresses the sampling or the")
-        print("input is degenerate. Investigate before citing anything here.")
+    if not any(r["identical"] for r in a) and all(r["identical"] for r in b):
+        print(f"Verdict: A differs on all {len(a)} image(s), B is bit-identical on all of them.")
+        print("Run-to-run variation is attributable entirely to random sampling in the routing")
+        print("path. No kernel-level nondeterminism.")
+    elif any(r["identical"] for r in a):
+        print("Verdict: A did not differ on at least one image. Either this build suppresses the")
+        print("sampling or an input is degenerate. Investigate before citing anything here.")
     else:
         print("Verdict: B also differed, so something beyond routing RNG is nondeterministic.")
         print("This contradicts the recorded result and needs investigating.")
