@@ -64,6 +64,12 @@ jobs:
         # restate the same figures and drifted apart independently.
         run: python scripts/check_report.py --tables
 
+      - name: Memory scaling law still holds
+        # README section 5 leans on peak allocation being linear in pixel count.
+        # Refit the line from the artifacts so a torch release that changes
+        # allocation behaviour cannot quietly falsify the claim.
+        run: python scripts/check_report.py --scaling
+
       - name: Writing conventions
         # No em dashes, en dashes or semicolons in prose. A deliberate house
         # style for this repository, easy to reintroduce by accident.

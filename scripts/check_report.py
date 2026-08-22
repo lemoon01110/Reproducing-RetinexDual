@@ -283,15 +283,81 @@ def check_tables():
     return not problems
 
 
+def check_scaling():
+    """Fit the memory scaling law across every committed measurement.
+
+    README section 5 leans on peak allocation being linear in pixel count. That
+    claim had no guard, so a future torch release changing allocation behaviour
+    would quietly falsify it with nothing to notice. This refits the line from
+    the artifacts on every CI run and fails if it stops being linear.
+    """
+    import json
+    problems = []
+    pts = set()
+    for fname in ("footprint_memory.json", "footprint_memory_expandable.json",
+                  "ceiling_default.json", "ceiling_expandable.json"):
+        fp = ROOT / "results" / fname
+        if not fp.exists():
+            continue
+        for r in json.loads(fp.read_text())["rows"]:
+            if r.get("oom") or "peak_alloc" not in r:
+                continue
+            mpix = (r["padded"][2] * r["padded"][3]) / 1e6
+            pts.add((round(mpix, 4), round(r["peak_alloc"], 4)))
+
+    if len(pts) < 4:
+        problems.append(f"only {len(pts)} memory points available, need at least 4 to fit")
+    else:
+        pts = sorted(pts)
+        n = len(pts)
+        sx = sum(p[0] for p in pts)
+        sy = sum(p[1] for p in pts)
+        sxx = sum(p[0] ** 2 for p in pts)
+        sxy = sum(p[0] * p[1] for p in pts)
+        slope = (n * sxy - sx * sy) / (n * sxx - sx ** 2)
+        icpt = (sy - slope * sx) / n
+        ybar = sy / n
+        ssr = sum((y - (slope * x + icpt)) ** 2 for x, y in pts)
+        sst = sum((y - ybar) ** 2 for x, y in pts)
+        r2 = 1 - ssr / sst
+        resid = max(abs(y - (slope * x + icpt)) for x, y in pts)
+
+        if r2 < 0.999:
+            problems.append(f"memory is no longer linear in pixel count (R2 = {r2:.6f}, "
+                            f"expected > 0.999). README section 5 depends on this.")
+        if resid > 0.05:
+            problems.append(f"largest residual {resid:.4f} GiB exceeds 0.05, so the linear "
+                            f"model no longer describes the measurements")
+        if not (1.25 <= slope <= 1.36):
+            problems.append(f"scaling slope {slope:.4f} GiB/Mpix has moved outside the "
+                            f"1.25 to 1.36 band the report states")
+        if f"{slope:.3f}" not in (ROOT / "README.md").read_text():
+            problems.append(f"README does not state the fitted slope {slope:.3f} GiB per Mpix")
+
+        print(f"scaling: {'FAIL' if problems else 'ok'} "
+              f"({slope:.4f} GiB/Mpix + {icpt:.4f}, R2 = {r2:.6f}, "
+              f"{n} points over {pts[0][0]:.2f} to {pts[-1][0]:.2f} Mpix)")
+        for p in problems:
+            print(f"  FAIL {p}")
+        return not problems
+
+    for p in problems:
+        print(f"  FAIL {p}")
+    print("scaling: FAIL")
+    return False
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--links", action="store_true")
     ap.add_argument("--numbers", action="store_true")
     ap.add_argument("--style", action="store_true")
     ap.add_argument("--tables", action="store_true")
+    ap.add_argument("--scaling", action="store_true")
     args = ap.parse_args()
 
-    run_all = not (args.links or args.numbers or args.style or args.tables)
+    run_all = not (args.links or args.numbers or args.style or args.tables
+                   or args.scaling)
     ok = True
     if run_all or args.links:
         ok &= check_links()
@@ -299,6 +365,8 @@ def main():
         ok &= check_numbers()
     if run_all or args.tables:
         ok &= check_tables()
+    if run_all or args.scaling:
+        ok &= check_scaling()
     if run_all or args.style:
         ok &= check_style()
     return 0 if ok else 1

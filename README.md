@@ -388,10 +388,28 @@ process. Both are backed by [`results/footprint_latency.json`](results/footprint
 verifies this table against. Running both together cost about 1.5% on the 4K timing, which is larger than the
 group-to-group spread, so the script now warns when you do that.
 
-Peak allocation is linear in pixel count at **1.31 GiB per Mpix**, holding to within 2% across an
-8.5x range. That constant was also measured independently on a different GPU (an 8 GB RTX 5070
-Laptop, compute capability 12.0) at 1.31 GiB per Mpix, so it is a property of the model rather than
-of one card.
+Peak allocation is linear in pixel count. Fitting every measurement in
+[`results/`](results/), 11 points spanning 0.98 to 15.07 Mpix, a 15x range:
+
+```
+peak allocated (GiB) = 1.305 x Mpix + 0.029      R2 = 1.000000
+```
+
+The largest residual is 3 MB. That is a tighter fit than the measurements deserve to produce and it
+is worth saying why it holds so exactly: this network has no data-dependent allocation, so the
+working set is a fixed function of input size.
+
+**The intercept is the model itself.** 0.029 GiB is 31 MB, against 19 MB of fp32 weights
+(4,747,035 parameters) plus optimiser-free buffers and CUDA context, so the constant term is what
+sits on the card before any pixel arrives. The slope is what each megapixel costs.
+
+The same constant was measured independently on a different GPU, an 8 GB RTX 5070 Laptop at compute
+capability 12.0, at 1.31 GiB per Mpix. Two cards, two architectures, same law, so this is a property
+of the model rather than of one machine.
+
+`scripts/check_report.py --scaling` refits this line from the artifacts on every CI run and fails if
+linearity breaks, so a future torch release that changes allocation behaviour cannot quietly
+falsify the claim.
 
 ### What card do you actually need
 
@@ -545,6 +563,27 @@ python scripts/make_figure.py                                                   
   noted at the point where it appears. The git history has the details.
 - The single largest thing this cannot settle: whether the paper's SSIM protocol matches any of the
   ones tested here. Only the authors can answer that.
+### Which claims travel, and which are about this card
+
+A reader on different hardware needs to know which of these to expect to hold and which not. Marked
+by whether the claim is a property of the model or of the machine it ran on.
+
+| Claim | Travels | Why |
+|---|---|---|
+| PSNR 28.8199 +/- 0.0027 | **yes** | arithmetic on model outputs, hardware-independent to within fp32 reassociation |
+| SSIM 0.92217, and the unexplained gap | **yes** | same |
+| The three install defects | **yes**, given glibc <= 2.31 | 2.1 and 2.3 are hardware-independent. 2.2 is specific to older glibc, and newer distributions will not hit it |
+| The metric-divisor bug | **yes** | pure logic in the released script |
+| Checkpoint and code revision skew | **yes** | property of the released files |
+| Nondeterminism, and RNG replay being bit-identical | **yes** | property of the code path |
+| Memory law, 1.305 GiB per Mpix | **yes** | measured on two GPUs, two architectures |
+| Latency, 1347.73 ms at 4K | **no** | RTX 4090 at 2700 MHz. Expect this to scale with the card |
+| The 8 GiB allocator saving | **partly** | the mechanism is general, the size of the saving depends on how the working set lands relative to segment boundaries |
+| 5K runs, 6K does not | **no** | this is 24 GB divided by the memory law. Use the law with your own capacity |
+
+The determinism *verdict* travels. The determinism *max delta* does not even reproduce on the same
+card, for the reason given in [`DETERMINISM.md`](DETERMINISM.md).
+
 - **CI here does not verify the results.** The substantive claims need a 4K-capable GPU and a
   licence-restricted dataset, neither available to a GitHub runner. What CI does check is that the
   scripts compile and expose their flags, that internal links resolve, that the figures quoted in

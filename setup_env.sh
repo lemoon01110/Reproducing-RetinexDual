@@ -140,5 +140,17 @@ assert diff < 1e-3, "CUDA kernel disagrees with the reference implementation"
 print("    OK")
 PY
 
+# Persist the allocator setting into the environment itself, so it applies to
+# anyone who activates it and calls scripts/evaluate.py directly rather than
+# going through reproduce.sh. Without it the default allocator reserves 1.8x the
+# working set at 4K and the run needs a 24 GB card instead of a 16 GB one.
+# See README section 5.
+echo "==> pinning PYTORCH_CUDA_ALLOC_CONF into the environment"
+conda env config vars set PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True -n "${ENV_NAME}" \
+  > /dev/null && echo "    expandable_segments:True (applies on activate)"
+
 echo
 echo "Done. Activate with:  conda activate ${ENV_NAME}"
+echo
+echo "That activation sets PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True, which is"
+echo "what lets whole-image 4K inference fit on a 16 GB card. Unset it and you need 24 GB."
