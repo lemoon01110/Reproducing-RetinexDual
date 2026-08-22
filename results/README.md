@@ -87,3 +87,21 @@ landing in the same place is stronger.
 One caveat, stated rather than buried: the second harness is not included in this repository, so
 this row cannot be regenerated from what is published here. Only the first row can. It is recorded
 as supporting context, not as a headline result.
+
+## The SSIM gap
+
+Scored over all 150 images by [`../scripts/ssim_protocol_probe.py`](../scripts/ssim_protocol_probe.py),
+on one set of model outputs, to test whether the 0.0118 SSIM shortfall is a metric-definition
+difference rather than a model difference:
+
+| protocol | SSIM | vs repo helper | vs paper |
+|---|---|---|---|
+| `matlab_y` | 0.94656 | +0.02438 | +0.01256 |
+| `matlab_y_border4` | 0.94652 | +0.02434 | +0.01252 |
+| `repo_rgb_mean` | 0.92218 | 0.00000 | -0.01182 |
+
+No convention tested reaches 0.934, and the published value falls between the two commonest ones.
+The gap is not explained. See README section 1.
+
+Worth noting that `repo_rgb_mean` here (0.92218) agrees with the main evaluation (0.92217) to five
+decimals, which is a useful check that the two independent code paths compute the same thing.

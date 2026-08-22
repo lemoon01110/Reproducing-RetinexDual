@@ -3,10 +3,11 @@
 An independent reproduction of **RetinexDual** (Kishawy, Hussein and Chen, ICPR 2026,
 [arXiv:2508.04797](https://arxiv.org/abs/2508.04797)) on the UHD-LL low-light benchmark.
 
-The paper's headline PSNR reproduces. Its SSIM does not, and I could not work out why. Getting to
-either number took working around three undocumented defects in the released repository, each of
-which stops a clean checkout from running at all, plus two further traps that do not stop it running
-and instead hand you a number that is quietly wrong.
+The paper's headline PSNR reproduces. Its SSIM does not, and after testing six SSIM conventions
+against it I still cannot account for the difference. Getting to either number took working around
+three undocumented defects in the released repository, each of which stops a clean checkout from
+running at all, plus two further traps that do not stop it running and instead hand you a number
+that is quietly wrong.
 
 | | Reported | Reproduced | |
 |---|---|---|---|
@@ -14,7 +15,7 @@ and instead hand you a number that is quietly wrong.
 | **SSIM** | 0.934 | 0.92217 +/- 0.00002 | **does not reproduce, -0.012** |
 
 Both halves are here, the confirmation and the failure, with the raw per-image data behind them.
-Section 1 covers what I checked on the SSIM gap and what I did not.
+Section 1 covers what I tested on the SSIM gap, what it ruled out, and what remains open.
 
 Upstream: [ErrorLogic1211/RetinexDual](https://github.com/ErrorLogic1211/RetinexDual) at commit
 `9feec2c0814d740221db2323e5e815a4d455abb6`.
@@ -49,18 +50,39 @@ PSNR lands 0.030 dB above the published value, which is well inside what counts 
 **SSIM does not reproduce.** It comes out 0.0118 low, which is roughly 700 times the 0.000016
 run-to-run spread, so this is a real difference and not noise.
 
-The leading hypothesis is that it is a difference in how SSIM is defined rather than in what the
-model produced, because **PSNR matches to 0.030 dB on the exact same output images**. A model that
-was genuinely producing worse restorations would be expected to miss on both. "SSIM" also names a
+The hypothesis worth testing was that this is a difference in how SSIM is defined rather than in
+what the model produced, because **PSNR matches to 0.030 dB on the exact same output images**. A
+model genuinely producing worse restorations would be expected to miss on both. "SSIM" also names a
 family rather than one number: the repository's helper averages per-channel SSIM over RGB with a
 MATLAB-style 11x11 Gaussian, while other common choices score luma only, crop a border, or use
-scikit-image's 7x7 uniform default, and these disagree with each other by more than 0.012 routinely.
+scikit-image's 7x7 uniform default. Measured here, those choices differ from each other by 0.024,
+which is twice the gap being explained, so the hypothesis was worth taking seriously.
 
-[`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) tests exactly this by scoring one
-set of model outputs under six conventions. **The result is reported below when that run completes,
-including the outcome where no convention accounts for the gap.** Until then this stays listed as
-unexplained. I am not claiming the paper is wrong, and this is the one question I would put to the
-authors.
+[`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) tests exactly this, scoring one
+set of model outputs under several conventions over all 150 images:
+
+| protocol | SSIM | vs repo helper | vs paper |
+|---|---|---|---|
+| `matlab_y` (luma, 11x11 Gaussian) | 0.94656 | +0.02438 | **+0.01256** |
+| `matlab_y_border4` (luma, 4px border crop) | 0.94652 | +0.02434 | +0.01252 |
+| `repo_rgb_mean` (what this repo reports) | 0.92218 | 0.00000 | **-0.01182** |
+
+**The hypothesis fails, and the gap stays open.** No convention tested lands on 0.934. The published
+value falls *between* per-channel RGB and luma, roughly 0.012 from each, so it is not simply that
+the authors used the other common convention.
+
+Two things this does establish. The probe agrees with the main evaluation to five decimals
+(0.92218 against 0.92217), so the reproduction's SSIM is not an artifact of how it is computed. And
+scikit-image configured with the same kernel reproduces both the RGB and luma figures exactly, so
+the MATLAB-style implementation here is not itself the problem.
+
+For completeness, since it is the first thing a reader will notice: the midpoint of the two
+conventions is 0.93437, which is close to 0.934. I have no mechanism that would make an average of
+two metrics meaningful, so I am recording it as a coincidence rather than a finding.
+
+Candidates I did not test, and cannot from here, include a different evaluation split, a different
+checkpoint from the one released, or an SSIM implementation not among those above. **This is the one
+question I would put to the authors.** I am not claiming the paper is wrong.
 
 Raw data: [`results/reproduction_seeds.csv`](results/reproduction_seeds.csv) (5 rows, one per seed)
 and [`results/reproduction_per_image.csv`](results/reproduction_per_image.csv) (150 rows).
