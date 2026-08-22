@@ -1,0 +1,16 @@
+# Dependencies for the CI checks ONLY. This is not how you build the
+# environment that runs the model. For that, see setup_env.sh and README
+# section 2, which explain why the upstream requirements.txt cannot be
+# installed as written.
+#
+# CPU-only torch. The scripts import torch and cv2 at module scope, so the
+# --help check in CI needs them present to distinguish "this flag is not wired
+# up" from "the import failed". Nothing here can run the model.
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+torch
+numpy
+matplotlib
+opencv-python-headless
+scikit-image

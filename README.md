@@ -1,7 +1,11 @@
 # Reproducing RetinexDual
 
+[![checks](https://github.com/lemoon01110/Reproducing-RetinexDual/actions/workflows/checks.yml/badge.svg)](https://github.com/lemoon01110/Reproducing-RetinexDual/actions/workflows/checks.yml)
+
 An independent reproduction of **RetinexDual** (Kishawy, Hussein and Chen, ICPR 2026,
 [arXiv:2508.04797](https://arxiv.org/abs/2508.04797)) on the UHD-LL low-light benchmark.
+
+The badge covers internal consistency only, not the measurements. See section 7.
 
 The paper's headline PSNR reproduces. Its SSIM does not, and after testing six SSIM conventions
 against it I still cannot account for the difference. Getting to either number took working around
