@@ -582,10 +582,19 @@ python scripts/make_figure.py                                                   
 - Where a number came out against my expectation, in particular the SSIM gap, it is reported as
   unresolved instead of explained away. The metric-convention hypothesis was tested and failed.
 - Several figures in earlier revisions of this report were wrong and were corrected against fresh
-  measurements rather than quietly dropped. The determinism table was measured on synthetic noise
-  and overstated the effect. The memory sweep was contaminated by cuDNN's algorithm search. The
-  first SSIM probe compared a 40-image subset against a full-set published number. Each is now
-  noted at the point where it appears. The git history has the details.
+  measurements rather than quietly dropped. Each is now noted at the point where it appears, and the
+  git history has the details:
+  - the determinism table was measured on synthetic noise, which overstated the effect
+  - the memory sweep was contaminated by cuDNN's algorithm search, giving a non-monotonic result
+  - the first SSIM probe compared a 40-image subset against a full-set published number
+  - the wall clock was quoted from impression and was wrong by a factor of three
+  - the hardware requirement was stated as 24 GB when 16 GB suffices with one environment variable
+  - **expandable segments were said not to move the OOM ceiling. They raise it by about 9%.** The
+    two probe points that produced that conclusion both sat above both ceilings, so the effect was
+    invisible and I generalised from a pair of measurements that could not have shown it.
+
+  The last one is the one to read if you only read one. Agreeing measurements are not evidence when
+  both lie outside the range where the effect exists.
 - The single largest thing this cannot settle: whether the paper's SSIM protocol matches any of the
   ones tested here. Only the authors can answer that.
 ### Which claims travel, and which are about this card
