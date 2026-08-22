@@ -435,9 +435,10 @@ committing to the full run, and both label themselves in the output so their res
 mistaken for a reproduction:
 
 ```bash
-python scripts/evaluate.py --repo ~/RetinexDual --data <testing_set> \
-    --seeds 0 --limit 4 --skip-ssim        # a couple of minutes, verifies everything wires up
+bash reproduce.sh -- --limit 4 --skip-ssim    # a couple of minutes, verifies everything wires up
 ```
+
+Anything after `--` is passed through to `scripts/evaluate.py`.
 
 The two supporting tables regenerate independently:
 
