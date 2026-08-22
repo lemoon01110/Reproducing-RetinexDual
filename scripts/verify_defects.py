@@ -119,7 +119,34 @@ def check_gumbel_unguarded(ref):
     return findings
 
 
+def check_pin_still_described(ref):
+    """Is the pinned commit still master HEAD, and does the report say so correctly?
+
+    ENVIRONMENT.md described 9feec2c as 'master HEAD'. Upstream moved three
+    commits ahead and the claim quietly became false. Nothing caught it, because
+    every defect still held and every artifact still matched.
+    """
+    import pathlib
+    head = fetch("https://api.github.com/repos/ErrorLogic1211/RetinexDual/commits/master",
+                 as_json=True)["sha"]
+    env = pathlib.Path(__file__).resolve().parent.parent / "ENVIRONMENT.md"
+    text = env.read_text() if env.exists() else ""
+    findings = []
+    if head == PINNED:
+        return findings
+    # Upstream has moved. The report must not still call the pin master HEAD, and
+    # should name the commit it has moved to.
+    for i, line in enumerate(text.splitlines(), 1):
+        if PINNED[:7] in line and "master HEAD" in line and "was" not in line:
+            findings.append(f"ENVIRONMENT.md:{i} still calls the pinned commit master HEAD, "
+                            f"but HEAD is now {head[:8]}")
+    if head[:8] not in text:
+        findings.append(f"upstream moved to {head[:8]} and ENVIRONMENT.md does not mention it")
+    return findings
+
+
 CHECKS = [
+    ("pinned commit is described accurately", check_pin_still_described),
     ("2.1 requirements.txt is unsatisfiable", check_requirements_unsatisfiable),
     ("2.3 setup.py imports torch at line 9", check_setup_py_imports_torch),
     ("3.1 README recommends the reference fallback", check_readme_recommends_ref_fallback),

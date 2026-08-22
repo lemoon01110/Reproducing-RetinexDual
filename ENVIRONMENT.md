@@ -11,6 +11,7 @@
 ## Contents
 
 - [Provenance](#provenance)
+- [Upstream has moved since this commit was pinned](#upstream-has-moved-since-this-commit-was-pinned)
 - [Hardware and OS](#hardware-and-os)
 - [Software](#software)
 - [Deviations from requirements.txt, and why](#deviations-from-requirementstxt-and-why)
@@ -25,12 +26,32 @@ paper's, and to rebuild this environment from scratch.
 | Item | Value |
 |---|---|
 | Upstream repository | https://github.com/ErrorLogic1211/RetinexDual |
-| Commit | `9feec2c0814d740221db2323e5e815a4d455abb6` (master HEAD) |
+| Commit | `9feec2c0814d740221db2323e5e815a4d455abb6` (see the note below) |
 | Weights source | HuggingFace `ErrorLogic/RetinexDual`, file `UHD_LL.pth` |
 | `UHD_LL.pth` size | 19,272,064 bytes |
 | `UHD_LL.pth` sha256 | `1977bb774cefb360bcb6edecdf4606568fa59f53aab8717fbe13bc35bacae182` |
 | Dataset | UHD-LL testing set, 150 pairs, all 3840x2160 |
 | Dataset size | 197,703,282 bytes, 0 corrupt, 150/150 paired |
+
+### Upstream has moved since this commit was pinned
+
+`9feec2c` was `master` HEAD when this report began. It is not any more. Upstream is three commits
+ahead as of writing, at `105310a`:
+
+| | |
+|---|---|
+| `e54c127f` | Add Apache-2.0 LICENSE and NOTICE |
+| `4f0083f3` | Restore FFT term and VGG16 perceptual loss in `RetinexDuelLoss` |
+| `105310a6` | README: document the loss function and the license |
+
+**None of it touches the inference path.** The changes are to `basicsr/models/losses/losses.py`, the
+four training configs, and documentation, so nothing in this report is affected.
+`scripts/verify_defects.py --head` confirms all five defect claims still hold on the new HEAD.
+
+Two things are worth noting anyway. The second commit *restores* a loss term to the released code,
+which is independent evidence for the same theme as section 4.1: the released repository has been a
+moving revision that did not exactly match what produced the released checkpoint. And upstream now
+carries an explicit Apache-2.0 licence, where it previously had none.
 
 ## Hardware and OS
 

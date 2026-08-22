@@ -63,9 +63,8 @@ python scripts/determinism_audit.py --repo ~/RetinexDual \
 
 Five real UHD-LL test images, sampled evenly across the split rather than taken from the front, each
 `1x3x2176x3840` after reflect-padding to a multiple of 128. Five forward passes per image, runs 2 to
-5 each compared against run 1. Full warmup first, `cudnn.benchmark=False` for the reason given
-below.
-Deltas are on a [0, 1] image scale.
+5 each compared against run 1. Full warmup first, and `cudnn.benchmark=False` for the reason given
+below. Deltas are on a [0, 1] image scale.
 
 | | Mode | RNG reset per forward | Outputs identical | Max pixel delta | Mean delta | Pairwise PSNR |
 |---|---|---|---|---|---|---|
@@ -113,8 +112,8 @@ So the precise claim is narrower than "no kernel-level nondeterminism", and wort
 - **Across processes with `cudnn.benchmark` on, there is a second and much smaller source**, in
   algorithm selection rather than in the kernels themselves.
 
-Both are dwarfed by the routing RNG, which is the subject here. The mean delta is stable at roughly
-6e-04 and the identical-or-not verdict never moved under any of these conditions.
+Both are dwarfed by the routing RNG, which is the subject here. The mean delta is stable at
+6.5e-04 and the identical-or-not verdict never moved under any of these conditions.
 
 ## Interpretation
 
@@ -127,10 +126,10 @@ each forward makes the output bit-identical. It follows that:
   nondeterministic selective-scan reduction. Had any of those existed, experiment B would still have
   differed.
 
-Note the qualifier. Experiment B holds the convolution algorithm choice fixed, because it runs in
-one
-process. It therefore says nothing about algorithm *selection*, which does vary between processes
-under `cudnn.benchmark` and is a second, far smaller source of variation. See the section above.
+Note the qualifier. Experiment B holds the convolution algorithm choice fixed, because it runs in a
+single process. It therefore says nothing about algorithm *selection*, which does vary between
+processes under `cudnn.benchmark` and is a second, far smaller source of variation. See the section
+above.
 
 Without experiment B, row A on its own is ambiguous, since nondeterministic reductions in a CUDA
 kernel would produce a similar-looking result for an entirely different reason.
