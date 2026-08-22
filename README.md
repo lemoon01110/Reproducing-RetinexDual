@@ -472,8 +472,29 @@ python scripts/make_figure.py                                                   
 - **CI here does not verify the results.** The substantive claims need a 4K-capable GPU and a
   licence-restricted dataset, neither available to a GitHub runner. What CI does check is that the
   scripts compile and expose their flags, that internal links resolve, that the figures quoted in
-  the prose match the committed CSVs, and that the writing conventions hold. A green badge means
-  the report is internally consistent, not that the numbers were re-measured.
+  the prose match the committed CSVs and JSON artifacts, and that the writing conventions hold. A
+  green badge means the report is internally consistent, not that the numbers were re-measured.
+
+### What has actually been executed
+
+Stated because "the scripts are in the repository" and "the scripts run" are different claims, and
+the whole point of section 2 is that upstream shipped instructions nobody had executed.
+
+| | Status |
+|---|---|
+| `setup_env.sh`, clean environment from scratch | run, exit 0, kernels verified at 3.81e-06 |
+| `setup_env.sh` failure branches | all four exercised, see below |
+| `reproduce.sh` end to end | run from a clean checkout against the env `setup_env.sh` built |
+| `scripts/evaluate.py` full reproduction | 5 seeds x 150 images |
+| `scripts/determinism_audit.py` | 5 images, artifact committed |
+| `scripts/measure_footprint.py` | both modes, sweep, artifacts committed |
+| `scripts/ssim_protocol_probe.py` | 150 images |
+| `scripts/check_report.py` | negative-tested on deliberately broken copies |
+
+The four failure branches of `setup_env.sh` were each triggered deliberately: conda absent (clean
+message, exit 1), ABI tag mismatch (clean message, exit 1), `REPO_DIR` missing (warns and continues,
+which is the intended behaviour), and the kernel-versus-reference assertion (fires when the
+tolerance is made impossible, which confirms the check is not vacuous).
 
 ## 8. Files
 
