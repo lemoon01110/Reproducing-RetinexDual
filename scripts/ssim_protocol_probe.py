@@ -62,6 +62,79 @@ def ssim_matlab(img1, img2):
     return m.mean()
 
 
+def ssim_err_cly(img1, img2):
+    """SSIM exactly as ERR computes it, which is the benchmark RetinexDual's
+    upstream README credits for "the UHD restoration benchmarks and references".
+
+    Two differences from the RetinexDual repository's own helper, both material:
+
+      1. cv2.filter2D runs with borderType=BORDER_REPLICATE and the result is
+         NOT cropped to [5:-5, 5:-5]. The repo's version crops, discarding the
+         border. Averaging the full map instead includes edge regions where the
+         replicated border makes both images agree closely, which raises SSIM.
+      2. It is applied to the Y channel after a 1-pixel border crop.
+
+    Source: NJU-PCALab/ERR, comput_psnr_ssim.py, _ssim_cly and calculate_ssim,
+    whose defaults are crop_border=1 and test_y_channel=True.
+    """
+    C1, C2 = (0.01 * 255) ** 2, (0.03 * 255) ** 2
+    img1, img2 = img1.astype(np.float64), img2.astype(np.float64)
+    kernel = cv2.getGaussianKernel(11, 1.5)
+    window = np.outer(kernel, kernel.transpose())
+    bt = cv2.BORDER_REPLICATE
+
+    mu1 = cv2.filter2D(img1, -1, window, borderType=bt)
+    mu2 = cv2.filter2D(img2, -1, window, borderType=bt)
+    mu1_sq, mu2_sq, mu1_mu2 = mu1 ** 2, mu2 ** 2, mu1 * mu2
+    sigma1_sq = cv2.filter2D(img1 ** 2, -1, window, borderType=bt) - mu1_sq
+    sigma2_sq = cv2.filter2D(img2 ** 2, -1, window, borderType=bt) - mu2_sq
+    sigma12 = cv2.filter2D(img1 * img2, -1, window, borderType=bt) - mu1_mu2
+    m = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / \
+        ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
+    return m.mean()
+
+
+def bgr2ycbcr_full(img):
+    """Full YCbCr, BT.601 studio range, from BGR uint8. Matches BasicSR."""
+    img = img.astype(np.float64) / 255.0
+    b, g, r = img[..., 0], img[..., 1], img[..., 2]
+    y = 65.481 * r + 128.553 * g + 24.966 * b + 16.0
+    cb = -37.797 * r - 74.203 * g + 112.0 * b + 128.0
+    cr = 112.0 * r - 93.786 * g - 18.214 * b + 128.0
+    return np.stack([y, cb, cr], axis=-1)
+
+
+def ssim_torch01(out, gt):
+    """SSIM as ERR's basicsr/models/cal_ssim.py computes it.
+
+    That file is a separate implementation from the one in comput_psnr_ssim.py,
+    and differs in two ways that both matter: it scores tensors in [0, 1] with
+    C1 = 0.01^2 and C2 = 0.03^2 rather than the [0, 255] constants, and it
+    convolves with padding = window // 2 rather than cropping to valid.
+    Zero padding at the border drags both means toward zero, which behaves
+    differently from replicate padding or from cropping.
+    """
+    import torch
+    import torch.nn.functional as Fn
+
+    k = cv2.getGaussianKernel(11, 1.5)
+    w = torch.from_numpy(np.outer(k, k.T)).float()
+    w = w.expand(3, 1, 11, 11).contiguous()
+
+    a = torch.from_numpy(out.astype(np.float32) / 255.0).permute(2, 0, 1).unsqueeze(0)
+    b = torch.from_numpy(gt.astype(np.float32) / 255.0).permute(2, 0, 1).unsqueeze(0)
+
+    mu1 = Fn.conv2d(a, w, padding=5, groups=3)
+    mu2 = Fn.conv2d(b, w, padding=5, groups=3)
+    mu1_sq, mu2_sq, mu1_mu2 = mu1 ** 2, mu2 ** 2, mu1 * mu2
+    s1 = Fn.conv2d(a * a, w, padding=5, groups=3) - mu1_sq
+    s2 = Fn.conv2d(b * b, w, padding=5, groups=3) - mu2_sq
+    s12 = Fn.conv2d(a * b, w, padding=5, groups=3) - mu1_mu2
+    C1, C2 = 0.01 ** 2, 0.03 ** 2
+    m = ((2 * mu1_mu2 + C1) * (2 * s12 + C2)) / ((mu1_sq + mu2_sq + C1) * (s1 + s2 + C2))
+    return float(m.mean())
+
+
 def crop(img, b):
     return img if b == 0 else img[b:-b, b:-b, ...]
 
@@ -84,6 +157,21 @@ def protocols(out, gt, fast=False, out_float=None):
 
     # Same as above but with the 4-pixel border crop several benchmarks apply.
     r["matlab_y_border4"] = float(ssim_matlab(bgr2y(crop(out, 4)), bgr2y(crop(gt, 4))))
+
+    # ERR's protocol, at its own defaults. This is the strongest candidate for
+    # what the published table used, since RetinexDual credits ERR for the
+    # benchmark and its numbers sit in a table alongside ERR's.
+    r["err_y_cly"] = float(ssim_err_cly(bgr2y(crop(out, 1)), bgr2y(crop(gt, 1))))
+
+    # Per-channel over full YCbCr rather than luma only. Chroma channels score
+    # lower than luma, so averaging all three lands between the RGB and Y
+    # figures, which is where the published value sits.
+    o_ycc, g_ycc = bgr2ycbcr_full(out), bgr2ycbcr_full(gt)
+    r["ycbcr_mean"] = float(np.mean(
+        [ssim_matlab(o_ycc[:, :, i], g_ycc[:, :, i]) for i in range(3)]))
+
+    # ERR's other SSIM implementation: [0,1] constants, zero padding, per channel.
+    r["torch_rgb_01"] = ssim_torch01(out, gt)
 
     # Scored before uint8 quantisation. Tests whether the published figure could
     # come from evaluating in float space rather than on saved images.

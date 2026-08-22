@@ -7,7 +7,7 @@ An independent reproduction of **RetinexDual** (Kishawy, Hussein and Chen, ICPR 
 
 The badge covers internal consistency only, not the measurements. See section 7.
 
-The paper's headline PSNR reproduces. Its SSIM does not, and after testing eight SSIM conventions
+The paper's headline PSNR reproduces. Its SSIM does not, and after testing nine SSIM conventions
 against it I still cannot account for the difference. Getting to either number took working around
 three undocumented defects in the released repository, each of which stops a clean checkout from
 running at all, plus two further traps that do not stop it running and instead hand you a number
@@ -76,47 +76,69 @@ scikit-image's 7x7 uniform default. Measured here, those choices differ from eac
 which is twice the gap being explained, so the hypothesis was worth taking seriously.
 
 [`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) tests exactly this, scoring one
-set of model outputs under eight conventions. A 40-image pilot showed the three scikit-image variants
-agreeing with their MATLAB-kernel equivalents to five decimals, so the full 150-image run carries the
-five that differ:
+set of model outputs under nine conventions over all 150 images:
 
 | protocol | SSIM | vs repo helper | vs paper |
 |---|---|---|---|
+| `ycbcr_mean` (per channel over Y, Cb, Cr) | 0.97731 | +0.05514 | +0.04331 |
 | `matlab_y_float` (luma, before uint8 rounding) | 0.94688 | +0.02471 | +0.01288 |
+| `err_y_cly` (**ERR's own protocol**, luma, replicate border) | 0.94662 | +0.02444 | +0.01262 |
 | `matlab_y` (luma, 11x11 Gaussian) | 0.94656 | +0.02438 | **+0.01256** |
 | `matlab_y_border4` (luma, 4px border crop) | 0.94652 | +0.02434 | +0.01252 |
 | `matlab_rgb_float` (RGB, before uint8 rounding) | 0.92311 | +0.00094 | -0.01089 |
+| `torch_rgb_01` (ERR's `cal_ssim.py`, [0,1] constants, zero padding) | 0.92251 | +0.00034 | -0.01149 |
 | `repo_rgb_mean` (what this repo reports) | 0.92218 | 0.00000 | **-0.01182** |
 
 All 150 images, one seed. SSIM's run-to-run spread is 0.000016, so a single seed is sufficient here
 in a way it is not for PSNR. Backed by
 [`results/ssim_protocols.json`](results/ssim_protocols.json), which `scripts/check_report.py`
-verifies this table against. A re-run reproduced all three figures to five decimals.
+verifies this table against.
 
-**The hypothesis fails, and the gap stays open.** No convention tested lands on 0.934. The published
-value falls *between* per-channel RGB and luma, roughly 0.012 from each, so it is not simply that
-the authors used the other common convention.
+**The hypothesis fails, and it fails in a specific and informative way.** The conventions do not
+spread out smoothly. They fall into two tight clusters:
 
-The two `_float` rows test a separate idea: that the published figure might come from scoring the
-model output before `tensor2img` rounds it to uint8. Some codebases evaluate in float space, which
-removes quantisation noise and should raise SSIM. It does, by **0.0009**, which is about 8% of the
-gap. So that is not the explanation either. Worth testing and worth reporting as a negative, because
-it is a real difference between evaluation pipelines and it turns out to be far too small to matter
-here. The float path is validated inside the script by checking that rounding it recovers
-`tensor2img`'s output exactly, so a channel-order mistake cannot masquerade as a finding.
+- **RGB-like**, three protocols spanning 0.92218 to 0.92311, a spread of 0.0009
+- **luma-like**, four protocols spanning 0.94652 to 0.94688, a spread of 0.0004
 
-Two things this does establish. The probe agrees with the main evaluation to five decimals
-(0.92218 against 0.92217), so the reproduction's SSIM is not an artifact of how it is computed. And
-scikit-image configured with the same kernel reproduces both the RGB and luma figures exactly, so
-the MATLAB-style implementation here is not itself the problem.
+Between them is an empty band **0.0234 wide**, and the published 0.934 sits almost exactly in the
+middle of it, 46% of the way across. It is 0.0109 above the highest RGB result and 0.0125 below the
+lowest luma one. So this is not a case of having guessed the wrong convention from a continuum.
+Whatever produced 0.934 is not any member of either family.
 
-For completeness, since it is the first thing a reader will notice: the midpoint of the extreme two
-conventions is 0.93453, which is close to 0.934. I have no mechanism that would make an average of
-two metrics meaningful, so I am recording it as a coincidence rather than a finding.
+Two of these deserve individual mention.
 
-Candidates I did not test, and cannot from here, include a different evaluation split, a different
-checkpoint from the one released, or an SSIM implementation not among those above. **This is the one
-question I would put to the authors.** I am not claiming the paper is wrong.
+**ERR's protocol was the strongest candidate and it does not match.** The upstream README credits
+[ERR](https://github.com/NJU-PCALab/ERR) for "the UHD restoration benchmarks and references", and
+RetinexDual's results table sits alongside ERR's. Its `calculate_ssim` defaults to `crop_border=1`
+and `test_y_channel=True`, and its `_ssim_cly` uses `BORDER_REPLICATE` without cropping the filtered
+map, where the RetinexDual helper crops to valid. Implemented exactly, it lands within **0.0002** of
+plain luma SSIM. At 4K the `[5:-5]` crop discards about 0.5% of pixels, so border handling cannot
+move a dataset mean meaningfully. ERR ships a second, different SSIM in `basicsr/models/cal_ssim.py`
+using `[0,1]` constants and zero padding, and that one lands in the RGB cluster instead. Neither
+reaches 0.934.
+
+**The paper's own table is inconsistent with the RGB reading.** It lists UHDFormer at 27.11 dB /
+0.927 and ERR at 27.57 dB / 0.932. This reproduction measures 0.92218 at 28.82 dB, which would put
+RetinexDual *below* UHDFormer on SSIM while being 1.7 dB better on PSNR. So the published column is
+probably not per-channel RGB. But it is not luma either, which would read 0.947 here. That is the
+part I cannot resolve.
+
+What this rules out with reasonable confidence: the colour space, the border handling, the uint8
+rounding, the SSIM constants, and ERR's implementation specifically. What it cannot rule out from
+here: a different evaluation split, a downsampling step before scoring, a checkpoint other than the
+released one, or an implementation I have not thought of.
+
+The checkpoint is worth one note. It holds 4,725,531 parameters, matching the 4.726M the paper
+states, so the released weights do appear to be the ones measured. Together with PSNR agreeing to
+0.030 dB, that makes a model difference an unlikely explanation and keeps the question pointed at
+the metric.
+
+For completeness, since a reader will notice it: 0.934 sits near the midpoint of the two clusters. I
+have no mechanism that would make an average of two metric families meaningful, and with nine
+protocols measured the midpoint of some pair can be made to land almost anywhere, so I record it as
+a coincidence rather than a finding.
+
+**This is the one question I would put to the authors.** I am not claiming the paper is wrong.
 
 Raw data: [`results/reproduction_seeds.csv`](results/reproduction_seeds.csv) (5 rows, one per seed)
 and [`results/reproduction_per_image.csv`](results/reproduction_per_image.csv) (150 rows).

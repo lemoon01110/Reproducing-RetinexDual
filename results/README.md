@@ -100,11 +100,19 @@ difference rather than a model difference:
 
 | protocol | SSIM | vs repo helper | vs paper |
 |---|---|---|---|
+| `ycbcr_mean` | 0.97731 | +0.05514 | +0.04331 |
 | `matlab_y_float` | 0.94688 | +0.02471 | +0.01288 |
+| `err_y_cly` | 0.94662 | +0.02444 | +0.01262 |
 | `matlab_y` | 0.94656 | +0.02438 | +0.01256 |
 | `matlab_y_border4` | 0.94652 | +0.02434 | +0.01252 |
 | `matlab_rgb_float` | 0.92311 | +0.00094 | -0.01089 |
+| `torch_rgb_01` | 0.92251 | +0.00034 | -0.01149 |
 | `repo_rgb_mean` | 0.92218 | 0.00000 | -0.01182 |
+
+These fall into two tight clusters, RGB-like around 0.922 and luma-like around 0.947, separated by
+an empty band 0.0234 wide. The published 0.934 sits 46% of the way across that band, near neither.
+`err_y_cly` is ERR's own protocol, which upstream credits for the benchmark, and it lands within
+0.0002 of plain luma SSIM.
 
 The `_float` rows score the model output before `tensor2img` rounds it to uint8. That accounts for
 0.0009 of the 0.0118 gap, roughly 8%, so evaluating in float space is not the explanation.
