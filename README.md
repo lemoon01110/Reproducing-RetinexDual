@@ -353,7 +353,7 @@ Five real test images, five forward passes each, runs 2 to 5 compared against ru
 
 | Mode | RNG reset per forward | Identical | Max pixel delta | Pairwise PSNR |
 |---|---|---|---|---|
-| Natural inference, as released | no | **no** | 0.007 to 0.049 | 59.09 to 64.19 dB |
+| Natural inference, as released | no | **no** | 0.009 to 0.103 | 57.18 to 63.60 dB |
 | Exact RNG replay | yes | yes, bit-identical | 0.000 | inf |
 | Deterministic argmax routing | n/a | yes, bit-identical | 0.000 | inf |
 

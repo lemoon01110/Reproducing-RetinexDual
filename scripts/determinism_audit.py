@@ -58,9 +58,25 @@ def compare(ref, other):
     return mx, mean, psnr
 
 
-def run_experiment(model, x, mode, n=5):
+def run_experiment(model, x, mode, n=5, seed=0):
+    """Run n forwards under one mode and compare runs 2..n against run 1.
+
+    The seed is set ONCE here, before the n forwards, and deliberately not
+    between them. That is the whole experiment: successive forwards consume the
+    RNG stream and therefore route differently, which is what makes the released
+    inference path non-reproducible. Seeding once makes the *sequence*
+    reproducible across invocations without making the forwards identical to each
+    other, so the measured deltas can be committed as an artifact and checked.
+
+    Without this the max delta is not reproducible at all. Two consecutive
+    unseeded runs over the same five images gave 0.008 to 0.135 and 0.007 to
+    0.049, which is a 2.7x spread on a number the report quotes.
+    """
     outs = []
     orig = F.gumbel_softmax
+
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
     if mode == "argmax":
         F.gumbel_softmax = deterministic_gumbel
@@ -99,6 +115,9 @@ def main():
                     help="how many images to sample from --image-dir, evenly spaced")
     ap.add_argument("--synthetic", action="store_true", help="use a random 3840x2160 input instead")
     ap.add_argument("--passes", type=int, default=5)
+    ap.add_argument("--seed", type=int, default=0,
+                    help="set once before each experiment, so the run is "
+                         "reproducible without making the forwards identical")
     ap.add_argument("--out", default=None,
                     help="write a JSON artifact so the published table has a "
                          "machine-checkable source of truth")
@@ -120,7 +139,21 @@ def main():
     )
     from basicsr.utils import img2tensor
 
-    torch.backends.cudnn.benchmark = True
+    # benchmark OFF, deliberately, and this took a false start to work out.
+    #
+    # With it ON and a fixed seed, this audit still does not reproduce across
+    # processes: two runs over the same three images gave max deltas of 0.010195
+    # and 0.010667. Experiment B rules out kernel nondeterminism *within* a
+    # process, so the difference has to come from something that varies between
+    # them, and it does. cuDNN re-benchmarks convolution algorithms on each new
+    # process and timing noise can hand it a different winner, which changes the
+    # arithmetic slightly.
+    #
+    # With it OFF, algorithm choice is heuristic and fixed, and the audit is
+    # bit-reproducible across processes. That is what lets the artifact be
+    # committed and checked. It costs nothing here because this script measures
+    # output differences, not latency.
+    torch.backends.cudnn.benchmark = False
     model = RetinexDuelSambaFusionFinalization(
         in_channels=3, out_channels=3, L_n_feat=16, R_n_feat=16
     ).cuda().eval()
@@ -173,7 +206,7 @@ def main():
         print(f"[image] {src}", flush=True)
         per_image[src] = {}
         for tag, mode, label, reset in modes:
-            r = run_experiment(model, x, mode, n=args.passes)
+            r = run_experiment(model, x, mode, n=args.passes, seed=args.seed)
             per_image[src][tag] = r
             print(f"   {tag} identical={r['identical']} max={r['max_hi']:.4f} "
                   f"mean={r['mean']:.2e} psnr={r['psnr']:.2f}", flush=True)
@@ -220,7 +253,7 @@ def main():
                 "psnr_hi": max(r["psnr"] for r in rs),
             }
         with open(args.out, "w") as f:
-            json.dump({"n_images": len(inputs), "passes": args.passes,
+            json.dump({"n_images": len(inputs), "passes": args.passes, "seed": args.seed,
                        "images": sorted(per_image), "aggregate": agg,
                        "per_image": {k: {t: v[t] for t in v} for k, v in per_image.items()}},
                       f, indent=2)

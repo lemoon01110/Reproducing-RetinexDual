@@ -63,12 +63,12 @@ python scripts/determinism_audit.py --repo ~/RetinexDual \
 
 Five real UHD-LL test images, sampled evenly across the split rather than taken from the front, each
 `1x3x2176x3840` after reflect-padding to a multiple of 128. Five forward passes per image, runs 2 to
-5 each compared against run 1. Full warmup first, `cudnn.benchmark=True`. Deltas are on a [0, 1]
-image scale.
+5 each compared against run 1. Full warmup first, `cudnn.benchmark=False` for the reason given below.
+Deltas are on a [0, 1] image scale.
 
 | | Mode | RNG reset per forward | Outputs identical | Max pixel delta | Mean delta | Pairwise PSNR |
 |---|---|---|---|---|---|---|
-| **A** | Natural inference, as released | no | **no** | 0.007 to 0.049 | 5.40e-04 | **59.09 to 64.19 dB** |
+| **A** | Natural inference, as released | no | **no** | 0.009 to 0.103 | 6.46e-04 | **57.18 to 63.60 dB** |
 | **B** | Exact RNG replay | yes | **yes, bit-identical** | 0.000 | 0.000 | inf |
 | **C** | Deterministic argmax routing | n/a | **yes, bit-identical** | 0.000 | 0.000 | inf |
 
@@ -76,11 +76,11 @@ Per image, natural inference:
 
 | image | max delta | mean delta | pairwise PSNR |
 |---|---|---|---|
-| `1003_UHD_LL.JPG` | 0.0486 | 7.01e-04 | 59.78 dB |
-| `1453_UHD_LL.JPG` | 0.0156 | 4.22e-04 | 64.19 dB |
-| `1778_UHD_LL.JPG` | 0.0115 | 5.53e-04 | 60.36 dB |
-| `28_UHD_LL.JPG` | 0.0186 | 5.71e-04 | 59.09 dB |
-| `674_UHD_LL.JPG` | 0.0115 | 4.53e-04 | 62.44 dB |
+| `1003_UHD_LL.JPG` | 0.1028 | 7.00e-04 | 59.89 dB |
+| `1453_UHD_LL.JPG` | 0.0218 | 4.24e-04 | 63.60 dB |
+| `1778_UHD_LL.JPG` | 0.0131 | 7.49e-04 | 58.16 dB |
+| `28_UHD_LL.JPG` | 0.0179 | 8.42e-04 | 57.18 dB |
+| `674_UHD_LL.JPG` | 0.0135 | 5.16e-04 | 62.70 dB |
 
 Backed by [`results/determinism.json`](results/determinism.json), which `scripts/check_report.py`
 verifies this table against, so the two cannot drift apart.
@@ -92,28 +92,49 @@ decisions scatter more. The second used `1003_UHD_LL.JPG` alone, which is consis
 most variable of the five. Neither was wrong as a measurement. Both were a single point presented as
 a general claim.
 
-**The max delta is itself stochastic and should not be read as a constant.** The audit fixes no
-seed, so repeated runs on the same five images give different maxima. Two consecutive runs gave
-0.008 to 0.135 and 0.007 to 0.049 for the same images. The mean delta is stable at roughly 5e-04
-across both, and the identical or not verdict never moves. Those two are what the argument rests
-on. The max is reported because it shows the perturbation is locally large, not because any
-particular value of it is reproducible.
+**This audit is now reproducible, and making it so found a second source of variation.**
+
+Earlier versions fixed no seed, so repeated runs gave different maxima: 0.008 to 0.135 and 0.007 to
+0.049 over the same five images. Fixing the seed was the obvious fix and it was not sufficient.
+Two seeded runs still disagreed, at 0.010195 and 0.010667.
+
+That is a useful signal rather than a nuisance. Experiment B rules out kernel nondeterminism
+*within* a process, so anything that still varies must vary *between* processes. It does:
+`cudnn.benchmark = True` makes cuDNN re-benchmark convolution algorithms in each new process, and
+timing noise can hand it a different winner, which changes the arithmetic slightly. Setting it off
+makes algorithm choice heuristic and fixed, and the audit then reproduces bit-exactly across
+processes. It costs nothing here, since this script measures output differences rather than latency.
+
+So the precise claim is narrower than "no kernel-level nondeterminism", and worth stating carefully:
+
+- **Within a process, given a fixed algorithm choice, there is none.** That is what experiment B
+  shows, and it is what the argument in this document rests on.
+- **Across processes with `cudnn.benchmark` on, there is a second and much smaller source**, in
+  algorithm selection rather than in the kernels themselves.
+
+Both are dwarfed by the routing RNG, which is the subject here. The mean delta is stable at roughly
+6e-04 and the identical-or-not verdict never moved under any of these conditions.
 
 ## Interpretation
 
 **Experiment B is the one that carries the argument.** Restoring both CPU and CUDA RNG state before
 each forward makes the output bit-identical. It follows that:
 
-- Run-to-run variation is attributable **entirely to random sampling in the routing path**.
-- There is **no kernel-level nondeterminism**. No atomics in the scatter or gather, no
-  algorithm-selection drift, no nondeterministic selective-scan reduction. Had any of those existed,
-  experiment B would still have differed.
+- Run-to-run variation within a process is attributable **entirely to random sampling in the routing
+  path**.
+- There is **no nondeterminism in the kernels themselves**. No atomics in the scatter or gather, no
+  nondeterministic selective-scan reduction. Had any of those existed, experiment B would still have
+  differed.
+
+Note the qualifier. Experiment B holds the convolution algorithm choice fixed, because it runs in one
+process. It therefore says nothing about algorithm *selection*, which does vary between processes
+under `cudnn.benchmark` and is a second, far smaller source of variation. See the section above.
 
 Without experiment B, row A on its own is ambiguous, since nondeterministic reductions in a CUDA
 kernel would produce a similar-looking result for an entirely different reason.
 
-The perturbation is localised rather than spread evenly. Mean absolute delta is about 5e-04, well
-under one 8-bit level, while the maximum reaches roughly 0.05 to 0.14 depending on the run, some tens of levels. So
+The perturbation is localised rather than spread evenly. Mean absolute delta is about 6.5e-04, well
+under one 8-bit level, while the maximum reaches 0.103 on the worst image, about 26 levels. So
 most pixels are untouched and a small number move a lot, which is what flipping a routing decision
 for a subset of tokens would do.
 
