@@ -332,6 +332,22 @@ def check_tables():
             if f"{val:.4f}" not in all_docs:
                 problems.append(f"no document states PSNR {val:.4f} for protocol '{proto}'")
 
+        # Counts written as words go stale silently. "nine conventions" survived
+        # two commits after MS-SSIM took the total to ten, and no numeric check
+        # could see it because no digit was involved.
+        n_ssim = len([k for k in sj["protocols"] if not k.startswith("psnr_")])
+        words = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six",
+                 7: "seven", 8: "eight", 9: "nine", 10: "ten", 11: "eleven", 12: "twelve"}
+        right = words.get(n_ssim, str(n_ssim))
+        for name, text in read_docs():
+            for i, line in enumerate(text.splitlines(), 1):
+                for m in re.finditer(r"\b(one|two|three|four|five|six|seven|eight|nine|ten|"
+                                     r"eleven|twelve)\s+(?:SSIM\s+)?(?:conventions|protocols)\b",
+                                     line, re.I):
+                    if m.group(1).lower() != right:
+                        problems.append(f"{name}:{i} says '{m.group(0)}' but "
+                                        f"ssim_protocols.json has {n_ssim}")
+
         # Checkpoint audit. These numbers were quoted from notes for a long time
         # before anything re-measured them.
         ca = ROOT / "results" / "checkpoint_audit.json"

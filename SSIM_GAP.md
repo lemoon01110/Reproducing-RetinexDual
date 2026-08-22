@@ -17,6 +17,8 @@
 - [The colour space is pinned by PSNR](#the-colour-space-is-pinned-by-psnr)
 - [Aggregation, and a tempting near-miss](#aggregation-and-a-tempting-near-miss)
 - [What this rules out, and what remains open](#what-this-rules-out-and-what-remains-open)
+- [Are the implementations themselves right](#are-the-implementations-themselves-right)
+- [Regenerating this](#regenerating-this)
 
 ## The discrepancy
 
@@ -53,6 +55,13 @@ All 150 images, one seed. SSIM's run-to-run spread is 0.000016, so a single seed
 in a way it is not for PSNR. Backed by
 [`results/ssim_protocols.json`](results/ssim_protocols.json), which `scripts/check_report.py`
 verifies this table against.
+
+Three scikit-image variants are tested by the script but absent from this table, including the 7x7
+uniform default mentioned above. A 40-image pilot found each agreeing with its MATLAB-kernel
+equivalent to five decimal places, so carrying them through a 150-image run would have added cost
+without adding information. `--fast` skips them and the default path keeps them, because agreement
+between two independent implementations is what establishes that the kernel here is right. See
+[the implementation check](#are-the-implementations-themselves-right).
 
 ## The result has a shape
 
@@ -162,16 +171,6 @@ pairing or preprocessing bug looks like.
 Reproduce with `python scripts/test_aggregation.py`, which needs no GPU and reads the committed
 per-image CSV.
 
-### Are the implementations themselves right
-
-Everything above depends on my SSIM code being correct. If `ssim_matlab` were subtly wrong the
-clustering would be an artifact of this repository rather than a fact about SSIM, so
-`scripts/test_metrics.py` pins each implementation against an independent reference and CI runs it.
-The MATLAB-style estimator agrees with scikit-image configured with a matched kernel to **3e-14**,
-the colour transforms reproduce the BT.601 coefficients exactly, and every implementation returns
-exactly 1.0 on identical inputs. The suite was checked against a deliberately corrupted copy to
-confirm it fails rather than passing vacuously.
-
 I record the 0.00006 near-miss because a reader will find it, and because it is a good illustration
 of why a single matching number is not evidence. Test enough aggregations and one will land.
 
@@ -179,10 +178,10 @@ of why a single matching number is not evidence. Test enough aggregations and on
 
 What this rules out with reasonable confidence: the colour space, the border handling, the uint8
 rounding, the SSIM constants, and ERR's implementation specifically. Also ruled out, both by the
-joint PSNR
-constraint: a downsampling step before scoring, and any exclusion, trimming or subset choice.
+joint PSNR constraint: a downsampling step before scoring, and any exclusion, trimming or subset
+choice.
 
-What remains open: an SSIM implementation not among the nine tested, a checkpoint other than the
+What remains open: an SSIM implementation not among the ten tested, a checkpoint other than the
 released one, or a test split that differs in a way that happens to leave PSNR unchanged while
 moving SSIM by 0.012. That last one is possible but would be a coincidence.
 
@@ -192,15 +191,30 @@ states, so the released weights do appear to be the ones measured. Together with
 the metric.
 
 For completeness, since a reader will notice it: 0.934 sits near the midpoint of the two clusters. I
-have no mechanism that would make an average of two metric families meaningful, and with nine
+have no mechanism that would make an average of two metric families meaningful, and with ten
 protocols measured the midpoint of some pair can be made to land almost anywhere, so I record it as
 a coincidence rather than a finding.
 
 **This is the one question I would put to the authors.** I am not claiming the paper is wrong.
 
+## Are the implementations themselves right
 
-Regenerate the table with:
+Everything here depends on my SSIM code being correct. If `ssim_matlab` were subtly wrong the
+clustering would be an artifact of this repository rather than a fact about SSIM, so
+`scripts/test_metrics.py` pins each implementation against an independent reference and CI runs it.
+The MATLAB-style estimator agrees with scikit-image configured with a matched kernel to **3e-14**,
+the colour transforms reproduce the BT.601 coefficients exactly, and every implementation returns
+exactly 1.0 on identical inputs. The suite was checked against a deliberately corrupted copy to
+confirm it fails rather than passing vacuously.
+
+That matters more here than it usually would. The two clusters sit 0.0234 apart and the gap being
+explained is 0.0118, so an implementation error of even half a percent could have manufactured the
+entire result.
+
+## Regenerating this
 
 ```bash
 python scripts/ssim_protocol_probe.py --repo ~/RetinexDual --data <UHD-LL testing_set>
+python scripts/test_aggregation.py
+python scripts/test_metrics.py
 ```
