@@ -21,6 +21,7 @@ import argparse
 import csv
 import json
 import os
+import time
 import statistics
 import sys
 from collections import defaultdict
@@ -167,9 +168,12 @@ def main():
     os.makedirs(args.out, exist_ok=True)
     per_image = defaultdict(list)
     seed_rows = []
+    seed_times = []
+    t_start = time.perf_counter()
 
     for seed in args.seeds:
         print(f"[run] seed {seed}", flush=True)
+        t_seed = time.perf_counter()
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
         rows = evaluate_one_pass(model, pairs, device, calculate_psnr, calculate_ssim,
@@ -180,7 +184,10 @@ def main():
         for name, p, s in rows:
             per_image[name].append((p, s))
         ssim_txt = "skipped" if args.skip_ssim else f"{ssim:.5f}"
-        print(f"[run] seed {seed}: PSNR {psnr:.4f}  SSIM {ssim_txt}", flush=True)
+        elapsed = time.perf_counter() - t_seed
+        seed_times.append(elapsed)
+        print(f"[run] seed {seed}: PSNR {psnr:.4f}  SSIM {ssim_txt}  "
+              f"({elapsed / 60:.1f} min, {elapsed / len(rows):.2f} s/image)", flush=True)
 
     with open(os.path.join(args.out, "reproduction_seeds.csv"), "w", newline="") as f:
         w = csv.writer(f)
@@ -218,6 +225,9 @@ def main():
         print(f"  difference       {statistics.mean(ssims) - 0.934:+.4f}")
     if args.limit:
         print(f"  NOTE             limited to {seed_rows[0][1]} images, not a reproduction")
+    total = time.perf_counter() - t_start
+    print(f"  wall clock       {total / 60:.1f} min total, "
+          f"{statistics.mean(seed_times) / 60:.1f} min per seed")
     print("=" * 62)
 
     with open(os.path.join(args.out, "reproduction_summary.json"), "w") as f:
@@ -228,6 +238,7 @@ def main():
             "ssim_reported": 0.934,
             "ssim_mean": None if args.skip_ssim else statistics.mean(ssims),
             "limited": bool(args.limit), "ssim_skipped": bool(args.skip_ssim),
+            "wall_clock_s": total, "seed_times_s": seed_times,
             "torch": torch.__version__, "gpu": torch.cuda.get_device_name(0),
         }, f, indent=2)
 

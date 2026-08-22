@@ -1,5 +1,9 @@
 # Results
 
+> Raw data for [**Reproducing RetinexDual**](../README.md). The report that interprets
+> these files is [`../README.md`](../README.md).
+
+
 ## Provenance
 
 These files are the recorded reproduction reported in [`../README.md`](../README.md) section 1.

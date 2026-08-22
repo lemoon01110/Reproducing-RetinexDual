@@ -1,5 +1,21 @@
 # Is RetinexDual Inference Deterministic
 
+> Part of [**Reproducing RetinexDual**](README.md), an independent reproduction of
+> [arXiv:2508.04797](https://arxiv.org/abs/2508.04797) on the UHD-LL low-light benchmark.
+> This is the detail behind section 4.2 of [the main report](README.md), and the reason
+> that report quotes a spread over five seeds rather than a single number.
+>
+> Related: [`ENVIRONMENT.md`](ENVIRONMENT.md) for versions and hardware,
+> [`results/determinism.json`](results/determinism.json) for the raw measurements.
+
+## Contents
+
+- [Scope](#scope)
+- [Mechanism, read from the source](#mechanism-read-from-the-source)
+- [Experiment](#experiment)
+- [Interpretation](#interpretation)
+- [What this means for reproduction](#what-this-means-for-reproduction)
+
 Short answer: no, not as released. This document shows why, isolates the cause, and explains what it
 means for anyone trying to reproduce a PSNR number.
 

@@ -1,5 +1,22 @@
 # Environment and Provenance
 
+> Part of [**Reproducing RetinexDual**](README.md), an independent reproduction of
+> [arXiv:2508.04797](https://arxiv.org/abs/2508.04797) on the UHD-LL low-light benchmark.
+> The result and the defects are in [the main report](README.md). This file is the
+> supporting detail: versions, checksums, and every deviation with its reason.
+>
+> Related: [`DETERMINISM.md`](DETERMINISM.md) on why inference is not reproducible run to run,
+> and [`results/`](results/) for the raw data.
+
+## Contents
+
+- [Provenance](#provenance)
+- [Hardware and OS](#hardware-and-os)
+- [Software](#software)
+- [Deviations from requirements.txt, and why](#deviations-from-requirementstxt-and-why)
+- [Verification performed after install](#verification-performed-after-install)
+- [Baseline configuration](#baseline-configuration)
+
 Everything needed to judge whether the numbers in [`README.md`](README.md) are comparable to the
 paper's, and to rebuild this environment from scratch.
 
@@ -125,7 +142,16 @@ Recorded explicitly so none of it can later be presented as an optimization win.
   matching `inference_RetinexDual.py`. Output cropped back to 2160 before metrics.
 - Baseline forward pass, stochastic routing as released: **1347.73 ms** median (5 groups of 5
   iterations, CUDA-event timing, wall clock agreeing to 0.02%).
-- The working set is **10.94 GiB** at 3840x2176 and the allocator reserves **19.54 GiB**, so a card
-  with less than about 20 GiB will not hold whole-image 4K inference. Peak allocation is linear at
-  1.31 GiB per Mpix. See the caveat in README section 5 about why peak allocated is not the right
-  figure to quote while `cudnn.benchmark` is on.
+- The working set is **10.94 GiB** at 3840x2176, linear at 1.31 GiB per Mpix.
+- Reserved depends on two independent settings, so state which you mean:
+
+  | `cudnn.benchmark` | allocator | reserved at 3840x2176 |
+  |---|---|---|
+  | on (as the reproduction runs) | default | **19.54 GiB** |
+  | off | default | 19.67 GiB |
+  | off | `expandable_segments:True` | **11.64 GiB** |
+
+  The allocator setting is what matters, not `cudnn.benchmark`, which moves reserved by about
+  0.1 GiB here. With expandable segments 4K fits on a 16 GB card. Without, it needs 24 GB. See
+  README section 5, and the note there on why peak allocated is the wrong figure to quote while
+  `cudnn.benchmark` is on.

@@ -393,9 +393,35 @@ Peak allocation is linear in pixel count at **1.31 GiB per Mpix**, holding to wi
 Laptop, compute capability 12.0) at 1.31 GiB per Mpix, so it is a property of the model rather than
 of one card.
 
-**A card with less than about 20 GiB will not hold whole-image 4K inference here.** The working set
-is 10.94 GiB, but with `cudnn.benchmark = True` the allocator reserves 19.54 GiB, and reserved is
-what determines whether the run fits.
+### What card do you actually need
+
+The working set at 4K is 10.94 GiB, but the allocator reserves far more than it allocates, and
+reserved is what decides whether the run fits. **One environment variable moves the answer by 8 GiB:**
+
+| | reserved at 3840x2176 | ratio to working set | smallest card |
+|---|---|---|---|
+| default allocator | 19.67 GiB | 1.80x | 24 GB |
+| `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` | **11.64 GiB** | **1.06x** | **16 GB** |
+
+Both rows measured with `cudnn.benchmark` off, so the only variable is the allocator. With benchmark
+on, as the reproduction actually runs, the default allocator reserves 19.54 GiB, which is within
+0.7% of the 19.67 above. The allocator is what moves this number, not the benchmark flag.
+
+```bash
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+```
+
+The default allocator suballocates from fixed-size segments and fragments badly at this working set,
+holding 1.8x what it hands out. Expandable segments grow in place instead, bringing reserved to
+within 6% of allocated across the whole sweep. **Whole-image 4K inference therefore fits on a 16 GB
+card**, which the earlier "about 20 GiB" figure in this report wrongly ruled out. A 12 GB card is
+marginal at 11.64 GiB reserved and is not something I have tested.
+
+Smaller inputs, with expandable segments: 2560x1408 needs 5.04 GiB reserved, 1920x1088 needs 3.11,
+and 1280x768 needs 1.41. So an 8 GB card handles everything up to about 3.6 Mpix.
+
+Backed by [`results/footprint_memory.json`](results/footprint_memory.json) and
+[`results/footprint_memory_expandable.json`](results/footprint_memory_expandable.json).
 
 Wall clock and CUDA-event timings agree to within 0.02% at every resolution, and group-to-group
 spread at 4K is under 1 ms out of 1348 ms. An earlier, separately written harness measured the
