@@ -275,20 +275,55 @@ in line with this card's specification.
 
 ## 6. Reproducing this
 
+Nothing from upstream is vendored here, so you fetch three things yourself: the code, the weights
+and the dataset.
+
 ```bash
+# 1. This repository
 git clone https://github.com/lemoon01110/Reproducing-RetinexDual
 cd Reproducing-RetinexDual
-bash setup_env.sh          # builds the working environment described in section 2
-bash reproduce.sh          # full 150-image evaluation, 5 seeds
+
+# 2. The upstream code, pinned to the commit this report was written against
+git clone https://github.com/ErrorLogic1211/RetinexDual ~/RetinexDual
+git -C ~/RetinexDual checkout 9feec2c0814d740221db2323e5e815a4d455abb6
+
+# 3. The weights
+mkdir -p ~/RetinexDual/pretrained_weights
+curl -L -o ~/RetinexDual/pretrained_weights/UHD_LL.pth \
+  https://huggingface.co/ErrorLogic/RetinexDual/resolve/main/UHD_LL.pth
+
+# 4. Build the environment (section 2 explains why it does not follow requirements.txt)
+REPO_DIR=~/RetinexDual bash setup_env.sh
+conda activate retinexdual-repro
+
+# 5. Run it
+REPO_DIR=~/RetinexDual DATA_DIR=~/data/UHD_LL/testing_set bash reproduce.sh
 ```
 
-`reproduce.sh` writes `results/reproduction_seeds.csv` and
-`results/reproduction_per_image.csv` and prints the comparison table from section 1.
+`setup_env.sh` refuses to finish if the CUDA kernels disagree with the reference implementation, so
+a mismatched wheel fails there rather than silently producing wrong numbers. `reproduce.sh`
+checksums the weight file, verifies the dataset, then writes `results/reproduction_seeds.csv`,
+`results/reproduction_per_image.csv` and `results/reproduction_summary.json`, and prints the
+comparison table from section 1.
 
-You need to supply the UHD-LL testing set yourself. It is distributed through Google Drive, which
-rate-limits folder downloads of this size, so an automated fetch is not reliable.
-`scripts/check_data.py` prints the exact layout expected and verifies pairing and image dimensions
-before anything runs.
+**You have to supply the UHD-LL testing set yourself.** It is distributed through
+[Google Drive](https://drive.google.com/drive/folders/1IneTwBsSiSSVXGoXQ9_hE1cO2d4Fd4DN), which
+rate-limits folder downloads of this size, so an automated fetch is not reliable. Download
+`testing_set/input` and `testing_set/gt`. Run `python scripts/check_data.py --data <path>` first.
+It prints the expected layout and verifies pairing, dimensions and decodability, which matters
+because a truncated Drive download is the normal failure mode and section 3.2 explains how that
+turns into a plausible but wrong PSNR rather than an error.
+
+Budget roughly 20 minutes per seed on a 4090. SSIM at 3840x2160 is computed on the CPU and
+dominates the wall clock, not the forward pass.
+
+The two supporting tables regenerate independently:
+
+```bash
+python scripts/determinism_audit.py --repo ~/RetinexDual --image <one input image>   # section 4.2
+python scripts/measure_footprint.py --repo ~/RetinexDual --sweep                     # section 5
+python scripts/make_figure.py                                                        # the figure
+```
 
 ---
 
