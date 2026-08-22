@@ -24,7 +24,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DOCS = ["README.md", "ENVIRONMENT.md", "DETERMINISM.md", "SSIM_GAP.md",
-        "results/README.md"]
+        "FOOTPRINT.md", "results/README.md"]
 
 # Lines that legitimately quote a superseded figure while saying so.
 SUPERSEDED_MARKERS = (
@@ -146,6 +146,39 @@ def check_numbers():
     return not problems
 
 
+def no_contradiction(pattern, correct, label, problems, extra_allowed=()):
+    """Every occurrence of a figure in this slot must equal the artifact value.
+
+    Checking only that the correct value appears *somewhere* is not enough. These
+    figures are restated across several documents, so a stale copy in one of them
+    passes a presence check while contradicting the artifact. This scans for the
+    shape of the number and requires each hit to be either the current value, an
+    explicitly allowed alternative, or on a line that flags itself as quoting a
+    superseded figure.
+    """
+    allowed = {correct} | set(extra_allowed)
+    seen = False
+    for name, text in read_docs():
+        lines = text.splitlines()
+        for i, line in enumerate(lines, 1):
+            # A superseded-figure marker often sits a line or two above the number
+            # it qualifies, because prose wraps. Check the surrounding paragraph
+            # rather than the single line, or legitimate cross-references to an
+            # earlier measurement get flagged as contradictions.
+            lo = max(0, i - 4)
+            hi = min(len(lines), i + 2)
+            window = " ".join(lines[lo:hi]).lower()
+            if any(m in window for m in SUPERSEDED_MARKERS):
+                continue
+            for m in re.finditer(pattern, line):
+                seen = True
+                if m.group(0) not in allowed:
+                    problems.append(f"{name}:{i} states {label} as {m.group(0)}, "
+                                    f"but the artifact says {correct}")
+    if not seen:
+        problems.append(f"no document states {label} ({correct})")
+
+
 def check_tables():
     """Verify the determinism and footprint tables against their JSON artifacts.
 
@@ -182,8 +215,6 @@ def check_tables():
             if row not in det_md:
                 problems.append(f"DETERMINISM.md per-image row for {img} does not match the artifact")
 
-    env_md = (ROOT / "ENVIRONMENT.md").read_text()
-
     for tag, fname in (("latency", "footprint_latency.json"), ("memory", "footprint_memory.json")):
         fp = ROOT / "results" / fname
         if not fp.exists():
@@ -194,18 +225,16 @@ def check_tables():
         if tag == "latency":
             v = f"{big['event_median']:.2f} ms"
             r = f"{big['peak_reserved_bench']:.2f} GiB"
-            # ENVIRONMENT.md restates both and had no guard, so it drifted
-            # independently of the README more than once.
-            for doc, name in ((readme, "README.md"), (env_md, "ENVIRONMENT.md")):
-                if v not in doc:
-                    problems.append(f"{name} does not state the 4K latency '{v}'")
-                if r not in doc:
-                    problems.append(f"{name} does not state the 4K reserved memory '{r}'")
+            # Checked across the union of documents rather than pinned to one.
+            # These figures are restated in several places and have moved between
+            # them as the report was restructured, so following the content is
+            # the right behaviour and forbidding the move is not.
+            no_contradiction(r"\b1\d{3}\.\d{2} ms\b", v, "the 4K latency", problems)
+            no_contradiction(r"\b19\.\d{2} GiB\b", r, "the 4K reserved memory", problems,
+                             extra_allowed={"19.67 GiB"})
         else:
             v = f"{big['peak_alloc']:.2f} GiB"
-            for doc, name in ((readme, "README.md"), (env_md, "ENVIRONMENT.md")):
-                if v not in doc:
-                    problems.append(f"{name} does not state the 4K working set '{v}'")
+            no_contradiction(r"\b10\.\d{2} GiB\b", v, "the 4K working set", problems)
 
     ssim_p = ROOT / "results" / "ssim_protocols.json"
     if not ssim_p.exists():

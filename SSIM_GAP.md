@@ -11,7 +11,7 @@
 ## Contents
 
 - [The discrepancy](#the-discrepancy)
-- [Nine conventions, measured](#nine-conventions-measured)
+- [Ten conventions, measured](#ten-conventions-measured)
 - [The result has a shape](#the-result-has-a-shape)
 - [ERR's protocol, the strongest candidate](#errs-protocol-the-strongest-candidate)
 - [The colour space is pinned by PSNR](#the-colour-space-is-pinned-by-psnr)
