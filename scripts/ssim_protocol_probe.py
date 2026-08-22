@@ -32,6 +32,11 @@ def check_image_size(x, mult=128):
     return F.pad(x, (0, (mult - w % mult) % mult, 0, (mult - h % mult) % mult), "reflect")
 
 
+def bgr2y_float(img):
+    """Same luma transform as bgr2y but for an already-float [0, 255] array."""
+    return np.dot(img / 255.0, [24.966, 128.553, 65.481]) + 16.0
+
+
 def bgr2y(img):
     """BT.601 luma in the 16-235 studio range, which is what 'Y channel' means
     in most restoration papers (and what BasicSR's bgr2ycbcr produces)."""
@@ -61,8 +66,13 @@ def crop(img, b):
     return img if b == 0 else img[b:-b, b:-b, ...]
 
 
-def protocols(out, gt, fast=False):
-    """out, gt are uint8 BGR at full resolution."""
+def protocols(out, gt, fast=False, out_float=None):
+    """out, gt are uint8 BGR at full resolution.
+
+    out_float, when given, is the model output before tensor2img quantised it to
+    uint8, on the same [0, 255] scale. Some codebases score in float space, which
+    removes the quantisation noise and raises SSIM slightly.
+    """
     from skimage.metrics import structural_similarity as sk_ssim
     r = {}
 
@@ -74,6 +84,14 @@ def protocols(out, gt, fast=False):
 
     # Same as above but with the 4-pixel border crop several benchmarks apply.
     r["matlab_y_border4"] = float(ssim_matlab(bgr2y(crop(out, 4)), bgr2y(crop(gt, 4))))
+
+    # Scored before uint8 quantisation. Tests whether the published figure could
+    # come from evaluating in float space rather than on saved images.
+    if out_float is not None:
+        gt_f = gt.astype(np.float64)
+        r["matlab_rgb_float"] = float(np.mean(
+            [ssim_matlab(out_float[:, :, i], gt_f[:, :, i]) for i in range(3)]))
+        r["matlab_y_float"] = float(ssim_matlab(bgr2y_float(out_float), bgr2y_float(gt_f)))
 
     if fast:
         # The scikit-image variants below agreed with the two above to 5 decimals
@@ -157,9 +175,27 @@ def main():
             o = model(t)
         while isinstance(o, (tuple, list)):
             o = o[0]
-        out = tensor2img(o[:, :, :h, :w])
+        cropped = o[:, :, :h, :w]
+        out = tensor2img(cropped)
+        # tensor2img clamps to [0,1] then scales to [0,255] and rounds. Keep the
+        # pre-rounding values on the same scale for the float protocols.
+        out_float = (cropped.squeeze(0).permute(1, 2, 0).clamp(0, 1)
+                     .float().cpu().numpy()[:, :, ::-1] * 255.0).astype(np.float64)
 
-        for key, val in protocols(out, gt, fast=args.fast).items():
+        # Validate the float path before trusting anything computed from it.
+        # tensor2img rounds and reorders channels, so if out_float were built
+        # wrongly (wrong channel order being the likely error, since img2tensor
+        # converts BGR to RGB on the way in) the float protocols would silently
+        # score a mismatched pair. Rounding out_float must recover out.
+        if k == 0:
+            delta = np.abs(np.rint(out_float) - out.astype(np.float64)).max()
+            print(f"[check] float path vs tensor2img: max |delta| = {delta:.1f} "
+                  f"(must be <= 1, larger means the channel order is wrong)", flush=True)
+            if delta > 1:
+                raise SystemExit("[check] float reconstruction does not match tensor2img, "
+                                 "refusing to report float protocols")
+
+        for key, val in protocols(out, gt, fast=args.fast, out_float=out_float).items():
             acc.setdefault(key, []).append(val)
         if (k + 1) % 10 == 0:
             print(f"  {k + 1}/{len(names)}", flush=True)
