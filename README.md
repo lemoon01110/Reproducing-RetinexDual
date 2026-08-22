@@ -3,12 +3,18 @@
 An independent reproduction of **RetinexDual** (Kishawy, Hussein and Chen, ICPR 2026,
 [arXiv:2508.04797](https://arxiv.org/abs/2508.04797)) on the UHD-LL low-light benchmark.
 
-The paper's headline number reproduces. Getting there took working around three undocumented defects
-in the released repository, each of which stops a clean checkout from running at all, plus two
-further traps that do not stop it running and instead hand you a number that is quietly wrong. This
-repo records both halves, the confirmation and the fixes, with the raw per-image data behind them.
+The paper's headline PSNR reproduces. Its SSIM does not, and I could not work out why. Getting to
+either number took working around three undocumented defects in the released repository, each of
+which stops a clean checkout from running at all, plus two further traps that do not stop it running
+and instead hand you a number that is quietly wrong.
 
-**Result: PSNR 28.8236 dB against 28.79 reported, a difference of +0.034 dB.**
+| | Reported | Reproduced | |
+|---|---|---|---|
+| **PSNR** | 28.79 dB | **28.8236 +/- 0.0042 dB** | reproduces, +0.034 dB |
+| **SSIM** | 0.934 | 0.92217 +/- 0.00001 | **does not reproduce, -0.012** |
+
+Both halves are here, the confirmation and the failure, with the raw per-image data behind them.
+Section 1 covers what I checked on the SSIM gap and what I did not.
 
 Upstream: [ErrorLogic1211/RetinexDual](https://github.com/ErrorLogic1211/RetinexDual) at commit
 `9feec2c0814d740221db2323e5e815a4d455abb6`.
