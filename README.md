@@ -147,7 +147,9 @@ the build. It also runs against upstream `master` as a non-blocking check, becau
 repository for a defect its authors have since fixed would be unfair, and this report should notice
 when that happens rather than wait to be told.
 
-As of the most recent run, all five claims still hold on `master` as well as at the pinned commit.
+Whether they still hold on `master` is answered by the badge at the top rather than by a sentence
+here, because a sentence would start ageing the moment upstream committed anything. At the time of
+writing they all did.
 
 ### 2.1 `requirements.txt` cannot be installed as written
 
@@ -252,13 +254,18 @@ a pure-PyTorch `selective_scan_ref` and alias `selective_scan_fn` to it, describ
 
 Numerically equivalent it is. Viable at ultra-high definition it is not. At this model's largest
 sequence length the reference path allocates two `(B, d_inner, L, d_state)` tensors, `deltaA` and
-`deltaB_u`. With `B=1, d_inner=72, L=2,088,960, d_state=16` in fp32 that is **9.6 GB each, about
-19 GB before anything else**, and it then runs a Python-level `for` loop over all 2,088,960
+`deltaB_u`. With `B=1, d_inner=72, L=2,088,960, d_state=16` in fp32 that is **9.63 GB each,
+19.25 GB before anything else**, and it then runs a Python-level `for` loop over all 2,088,960
 timesteps, appending to a list that is stacked at the end.
 
 "Slower" undersells this by orders of magnitude. The correct reading is that the fallback is a
 correctness reference only, and **any latency measured against it is not a measurement of
-RetinexDual**. For scale, the real CUDA kernel runs that same scan in 29.2 ms.
+RetinexDual**. For scale, the real CUDA kernel runs that same scan in **17.08 ms**, measured by
+[`scripts/measure_scan.py`](scripts/measure_scan.py) and recorded in
+[`results/scan_timing.json`](results/scan_timing.json).
+
+That last figure was quoted at 29.2 ms in an earlier version of this report, carried from notes
+rather than measured here, which overstated it by 41%.
 
 A related hazard, and the reason `scripts/evaluate.py` checks for it: Python puts the working
 directory ahead of site-packages, so a local directory named `mamba_ssm` silently shadows the
@@ -289,8 +296,8 @@ zero to the numerator, which drags the reported average down.
 **Scope, stated carefully.** On the official UHD-LL testing set all 150 images are paired, so this
 does not fire and it has no bearing on the paper's reported number. It bites when you point the
 script at a partial download, a subset or a folder with mismatched filenames, which is exactly what
-a reproducer does first. The same guard also means a silently truncated Google Drive download
-produces a plausible-looking but deflated PSNR rather than an error. `scripts/evaluate.py` counts
+a reproducer does first. Because nothing warns you, a silently truncated Google
+Drive download produces a plausible-looking but deflated PSNR instead of an error. `scripts/evaluate.py` counts
 only paired images and prints a warning when it finds unpaired ones.
 
 ---

@@ -1,0 +1,12 @@
+{
+  "scan_median_ms": 17.083295822143555,
+  "scan_min_ms": 17.076480865478516,
+  "scan_max_ms": 17.08835220336914,
+  "B": 1,
+  "d_inner": 72,
+  "L": 2088960,
+  "d_state": 16,
+  "ref_intermediate_gb": 9.62592768,
+  "ref_two_intermediates_gb": 19.25185536,
+  "gpu": "NVIDIA GeForce RTX 4090"
+}

@@ -318,6 +318,18 @@ def check_tables():
             if c["sgm_forward_calls"] != 0:
                 problems.append(f"SGM forward calls is {c['sgm_forward_calls']}, not 0")
 
+        # Selective-scan latency, which was quoted at 29.2 ms from notes and is
+        # actually 17.08 ms. Contradiction-checked so a stale copy cannot return.
+        st_p = ROOT / "results" / "scan_timing.json"
+        if not st_p.exists():
+            problems.append("results/scan_timing.json missing")
+        else:
+            t = json.loads(st_p.read_text())
+            no_contradiction(r"\b\d{2}\.\d{2} ms\b", f"{t['scan_median_ms']:.2f} ms",
+                             "the selective-scan latency", problems)
+            no_contradiction(r"\b9\.\d{2} GB\b", f"{t['ref_intermediate_gb']:.2f} GB",
+                             "the reference intermediate size", problems)
+
         # glibc floors, measured from the wheels rather than quoted.
         ga = ROOT / "results" / "glibc_audit.json"
         if not ga.exists():
