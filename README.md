@@ -441,6 +441,11 @@ python scripts/make_figure.py                                                   
   noted at the point where it appears. The git history has the details.
 - The single largest thing this cannot settle: whether the paper's SSIM protocol matches any of the
   ones tested here. Only the authors can answer that.
+- **CI here does not verify the results.** The substantive claims need a 4K-capable GPU and a
+  licence-restricted dataset, neither available to a GitHub runner. What CI does check is that the
+  scripts compile and expose their flags, that internal links resolve, that the figures quoted in
+  the prose match the committed CSVs, and that the writing conventions hold. A green badge means
+  the report is internally consistent, not that the numbers were re-measured.
 
 ## 8. Files
 
@@ -456,6 +461,7 @@ python scripts/make_figure.py                                                   
 | [`scripts/measure_footprint.py`](scripts/measure_footprint.py) | regenerates the memory and latency table in section 5 |
 | [`scripts/make_figure.py`](scripts/make_figure.py) | renders the PSNR figure from the committed CSVs |
 | [`scripts/make_qualitative.py`](scripts/make_qualitative.py) | renders the worst/median/best image strip |
+| [`scripts/check_report.py`](scripts/check_report.py) | guards links, prose-vs-CSV numbers, and writing conventions |
 | [`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) | scores outputs under six SSIM conventions |
 | `results/reproduction_seeds.csv` | 5 rows, dataset-level PSNR and SSIM per seed |
 | `results/reproduction_per_image.csv` | 150 rows, per-image mean and standard deviation |

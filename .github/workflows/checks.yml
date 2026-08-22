@@ -1,0 +1,64 @@
+name: checks
+
+# The substantive claims in this repository need a 4K-capable GPU and a
+# licence-restricted dataset, so CI cannot verify them. What it can do is stop
+# the report from rotting: broken scripts, dead links, numbers that disagree
+# between the prose and the committed CSVs, and the writing conventions.
+#
+# Anything CI cannot check is stated as such in README section 7 rather than
+# implied to be covered here.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install what the checks need
+        run: pip install --quiet numpy matplotlib
+
+      - name: Scripts compile
+        run: python -m compileall -q scripts/
+
+      - name: Shell scripts parse
+        run: |
+          for f in setup_env.sh reproduce.sh; do
+            bash -n "$f" && echo "ok   $f"
+          done
+
+      - name: Every argparse script shows help without a GPU
+        # Catches the class of error where a flag is added to the parser but not
+        # threaded through, which shipped once in this repository already.
+        run: |
+          for f in scripts/*.py; do
+            grep -q argparse "$f" || continue
+            python "$f" --help > /dev/null 2>&1 \
+              && echo "ok   $f --help" \
+              || { echo "FAIL $f --help"; exit 1; }
+          done
+
+      - name: Internal links resolve
+        run: python scripts/check_report.py --links
+
+      - name: Prose numbers match the committed CSVs
+        run: python scripts/check_report.py --numbers
+
+      - name: Writing conventions
+        # No em dashes, en dashes or semicolons in prose. A deliberate house
+        # style for this repository, easy to reintroduce by accident.
+        run: python scripts/check_report.py --style
+
+      - name: Figure regenerates from the committed data
+        run: |
+          python scripts/make_figure.py --results results --out /tmp/fig.png
+          test -s /tmp/fig.png && echo "ok   figure renders"

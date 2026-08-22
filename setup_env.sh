@@ -23,13 +23,38 @@ CP_TAG="cp311-cp311"
 MAMBA_WHL="https://github.com/state-spaces/mamba/releases/download/v2.2.4/mamba_ssm-2.2.4+cu12torch2.6${ABI_TAG}-${CP_TAG}-linux_x86_64.whl"
 CCONV_WHL="https://github.com/Dao-AILab/causal-conv1d/releases/download/v1.5.0.post8/causal_conv1d-1.5.0.post8+cu12torch2.6${ABI_TAG}-${CP_TAG}-linux_x86_64.whl"
 
-command -v conda >/dev/null || { echo "conda not found on PATH"; exit 1; }
-eval "$(conda shell.bash hook)"
+# Locate conda. Most installs only put it on PATH for interactive shells, so
+# `bash setup_env.sh` from a script, a cron job or over ssh will not find it
+# even though it is installed. Look in the usual places before giving up.
+find_conda() {
+  if command -v conda >/dev/null 2>&1; then
+    command -v conda
+    return 0
+  fi
+  local c
+  for c in "$HOME/miniconda3" "$HOME/miniforge3" "$HOME/anaconda3" \
+           "$HOME/mambaforge" "/opt/conda" "/usr/local/miniconda3"; do
+    if [[ -x "$c/bin/conda" ]]; then
+      echo "$c/bin/conda"
+      return 0
+    fi
+  done
+  return 1
+}
+
+CONDA_BIN="$(find_conda)" || {
+  echo "conda not found."
+  echo "Looked on PATH and in: ~/miniconda3 ~/miniforge3 ~/anaconda3 ~/mambaforge /opt/conda"
+  echo "Install Miniconda, or set CONDA_BIN to the conda executable and re-run."
+  exit 1
+}
+echo "==> conda at ${CONDA_BIN}"
+eval "$("${CONDA_BIN}" shell.bash hook)"
 
 echo "==> glibc on this machine"
 ldd --version | head -1
 
-if ! conda env list | grep -qE "^${ENV_NAME}\s"; then
+if ! conda env list | grep -qE "^${ENV_NAME}[[:space:]]"; then
   echo "==> creating conda env ${ENV_NAME} (python ${PY_VER})"
   conda create -y -n "${ENV_NAME}" "python=${PY_VER}"
 fi
