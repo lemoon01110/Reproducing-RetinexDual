@@ -23,7 +23,8 @@ import statistics as st
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-DOCS = ["README.md", "ENVIRONMENT.md", "DETERMINISM.md", "results/README.md"]
+DOCS = ["README.md", "ENVIRONMENT.md", "DETERMINISM.md", "SSIM_GAP.md",
+        "results/README.md"]
 
 # Lines that legitimately quote a superseded figure while saying so.
 SUPERSEDED_MARKERS = (
@@ -156,6 +157,9 @@ def check_tables():
     problems = []
     readme = (ROOT / "README.md").read_text()
     det_md = (ROOT / "DETERMINISM.md").read_text()
+    # Tables move between documents as the report is restructured. Check the
+    # union rather than pinning a figure to one file.
+    all_docs = "\n".join(t for _, t in read_docs())
 
     det_p = ROOT / "results" / "determinism.json"
     if not det_p.exists():
@@ -209,9 +213,11 @@ def check_tables():
     else:
         sj = json.loads(ssim_p.read_text())
         for proto, val in sj["protocols"].items():
+            if proto.startswith("psnr_"):
+                continue          # PSNR rows are checked against their own table
             v = f"{val:.5f}"
-            if v not in readme:
-                problems.append(f"README does not state SSIM {v} for protocol '{proto}'")
+            if v not in all_docs:
+                problems.append(f"no document states SSIM {v} for protocol '{proto}'")
         if sj["n_images"] < 150:
             problems.append(f"ssim_protocols.json is a partial run ({sj['n_images']} images). "
                             f"The published table must come from the full set.")
