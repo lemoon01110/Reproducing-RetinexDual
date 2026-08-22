@@ -105,3 +105,23 @@ The gap is not explained. See README section 1.
 
 Worth noting that `repo_rgb_mean` here (0.92218) agrees with the main evaluation (0.92217) to five
 decimals, which is a useful check that the two independent code paths compute the same thing.
+
+## JSON artifacts
+
+The CSVs above back the reproduction. These three back the other measured tables in the report.
+Before they existed, those tables had no source of truth and went stale repeatedly.
+`scripts/check_report.py --tables` verifies the published tables against all three, and CI runs it.
+
+| file | backs | produced by |
+|---|---|---|
+| `determinism.json` | the table in [`../DETERMINISM.md`](../DETERMINISM.md) and README section 4.2 | `scripts/determinism_audit.py --out` |
+| `footprint_latency.json` | the latency column in README section 5 | `scripts/measure_footprint.py --mode latency --out` |
+| `footprint_memory.json` | the working-set column in README section 5 | `scripts/measure_footprint.py --mode memory --out` |
+| `ssim_protocols.json` | the SSIM protocol table in README section 1 | `scripts/ssim_protocol_probe.py --out` |
+
+Two of these reproduce exactly on a re-run and one does not, which is worth knowing before quoting
+them. `ssim_protocols.json` reproduced all three figures to five decimals. `footprint_latency.json`
+moves by well under 1%. `determinism.json`'s **max delta does not reproduce**: consecutive runs over
+the same five images gave 0.008 to 0.135 and 0.007 to 0.049, because the audit fixes no seed and the
+routing is stochastic. Its mean delta and its identical-or-not verdict are stable, and those are
+what the argument in `DETERMINISM.md` rests on.

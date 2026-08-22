@@ -15,6 +15,7 @@ Usage:
 """
 import argparse
 import csv
+import json
 import os
 import sys
 
@@ -73,6 +74,9 @@ def main():
     ap.add_argument("--results", default="results")
     ap.add_argument("--out", default="assets/qualitative.png")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--out-json", default=None,
+                    help="record which images were selected and why, so the choice "
+                         "is auditable without a GPU")
     args = ap.parse_args()
 
     repo = os.path.abspath(os.path.expanduser(args.repo))
@@ -142,6 +146,18 @@ def main():
 
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     cv2.imwrite(args.out, canvas, [cv2.IMWRITE_PNG_COMPRESSION, 6])
+
+    if args.out_json:
+        with open(args.out_json, "w") as f:
+            json.dump({
+                "seed": args.seed, "crop": CROP,
+                "selection": "by rank from reproduction_per_image.csv, not by eye",
+                "crop_rule": "highest gradient energy on the ground truth",
+                "picks": [{"rank": tag, "image": rec["image"],
+                           "psnr_mean_db": float(rec["psnr_mean_db"])}
+                          for tag, rec in picks],
+            }, f, indent=2)
+        print(f"wrote {args.out_json}")
     print(f"wrote {args.out}  {canvas.shape[1]}x{canvas.shape[0]}")
     print(f"Crops are {CROP}x{CROP} at native resolution, selected by gradient energy "
           f"on the ground truth, not by eye.")

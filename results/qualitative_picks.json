@@ -1,0 +1,23 @@
+{
+  "seed": 0,
+  "crop": 520,
+  "selection": "by rank from reproduction_per_image.csv, not by eye",
+  "crop_rule": "highest gradient energy on the ground truth",
+  "picks": [
+    {
+      "rank": "worst",
+      "image": "2068_UHD_LL.JPG",
+      "psnr_mean_db": 16.741052
+    },
+    {
+      "rank": "median",
+      "image": "1464_UHD_LL.JPG",
+      "psnr_mean_db": 29.180623
+    },
+    {
+      "rank": "best",
+      "image": "442_UHD_LL.JPG",
+      "psnr_mean_db": 40.326734
+    }
+  ]
+}

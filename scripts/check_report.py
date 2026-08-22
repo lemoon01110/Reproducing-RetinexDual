@@ -216,10 +216,36 @@ def check_tables():
             problems.append(f"ssim_protocols.json is a partial run ({sj['n_images']} images). "
                             f"The published table must come from the full set.")
 
+    # The qualitative figure needs a GPU to regenerate, so CI cannot rebuild it.
+    # It can still check that the images shown were selected by the stated rule,
+    # which is the part a reader would be right to be sceptical about.
+    picks_p = ROOT / "results" / "qualitative_picks.json"
+    per_img_csv = ROOT / "results" / "reproduction_per_image.csv"
+    if picks_p.exists() and per_img_csv.exists():
+        picks = json.loads(picks_p.read_text())
+        rows = [r for r in csv.DictReader(per_img_csv.open()) if r["psnr_mean_db"]]
+        rows.sort(key=lambda r: float(r["psnr_mean_db"]))
+        want = {"worst": rows[0], "median": rows[len(rows) // 2], "best": rows[-1]}
+        for pick in picks["picks"]:
+            exp = want.get(pick["rank"])
+            if exp is None:
+                problems.append(f"qualitative_picks.json has unknown rank '{pick['rank']}'")
+            elif exp["image"] != pick["image"]:
+                problems.append(
+                    f"qualitative figure claims {pick['rank']} is {pick['image']}, but the "
+                    f"per-image CSV ranks {exp['image']} there. The selection is supposed to "
+                    f"be by rank, not by eye.")
+        for pick in picks["picks"]:
+            v = f"{pick['psnr_mean_db']:.2f} dB"
+            if pick["rank"] == "worst" and v.replace(" dB", "") not in readme:
+                problems.append(f"README does not state the worst-case PSNR '{v}'")
+    elif not picks_p.exists():
+        problems.append("results/qualitative_picks.json missing")
+
     for p in problems:
         print(f"  FAIL {p}")
     print(f"tables: {'FAIL' if problems else 'ok'} "
-          f"(determinism and footprint checked against results/*.json)")
+          f"(determinism, footprint, SSIM and figure selection checked against results/*.json)")
     return not problems
 
 
