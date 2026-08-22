@@ -218,6 +218,14 @@ def check_tables():
             v = f"{val:.5f}"
             if v not in all_docs:
                 problems.append(f"no document states SSIM {v} for protocol '{proto}'")
+        # PSNR under each convention is the sharpest constraint in SSIM_GAP.md,
+        # so it gets the same treatment as the SSIM rows.
+        for proto, val in sj["protocols"].items():
+            if not proto.startswith("psnr_"):
+                continue
+            if f"{val:.4f}" not in all_docs:
+                problems.append(f"no document states PSNR {val:.4f} for protocol '{proto}'")
+
         if sj["n_images"] < 150:
             problems.append(f"ssim_protocols.json is a partial run ({sj['n_images']} images). "
                             f"The published table must come from the full set.")

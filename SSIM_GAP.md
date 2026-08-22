@@ -11,10 +11,11 @@
 ## Contents
 
 - [The discrepancy](#the-discrepancy)
-- [What was tested](#what-was-tested)
+- [Nine conventions, measured](#nine-conventions-measured)
 - [The result has a shape](#the-result-has-a-shape)
-- [What this rules out](#what-this-rules-out)
-- [What remains open](#what-remains-open)
+- [ERR's protocol, the strongest candidate](#errs-protocol-the-strongest-candidate)
+- [The colour space is pinned by PSNR](#the-colour-space-is-pinned-by-psnr)
+- [What this rules out, and what remains open](#what-this-rules-out-and-what-remains-open)
 
 ## The discrepancy
 
@@ -28,6 +29,8 @@ family rather than one number: the repository's helper averages per-channel SSIM
 MATLAB-style 11x11 Gaussian, while other common choices score luma only, crop a border, or use
 scikit-image's 7x7 uniform default. Measured here, those choices differ from each other by 0.024,
 which is twice the gap being explained, so the hypothesis was worth taking seriously.
+
+## Nine conventions, measured
 
 [`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) tests exactly this, scoring one
 set of model outputs under nine conventions over all 150 images:
@@ -48,6 +51,8 @@ in a way it is not for PSNR. Backed by
 [`results/ssim_protocols.json`](results/ssim_protocols.json), which `scripts/check_report.py`
 verifies this table against.
 
+## The result has a shape
+
 **The hypothesis fails, and it fails in a specific and informative way.** The conventions do not
 spread out smoothly. They fall into two tight clusters:
 
@@ -59,9 +64,9 @@ middle of it, 46% of the way across. It is 0.0109 above the highest RGB result a
 lowest luma one. So this is not a case of having guessed the wrong convention from a continuum.
 Whatever produced 0.934 is not any member of either family.
 
-Two of these deserve individual mention.
+## ERR's protocol, the strongest candidate
 
-**ERR's protocol was the strongest candidate and it does not match.** The upstream README credits
+**It does not match.** The upstream README credits
 [ERR](https://github.com/NJU-PCALab/ERR) for "the UHD restoration benchmarks and references", and
 RetinexDual's results table sits alongside ERR's. Its `calculate_ssim` defaults to `crop_border=1`
 and `test_y_channel=True`, and its `_ssim_cly` uses `BORDER_REPLICATE` without cropping the filtered
@@ -71,11 +76,47 @@ move a dataset mean meaningfully. ERR ships a second, different SSIM in `basicsr
 using `[0,1]` constants and zero padding, and that one lands in the RGB cluster instead. Neither
 reaches 0.934.
 
-**The paper's own table is inconsistent with the RGB reading.** It lists UHDFormer at 27.11 dB /
+### The paper's own table is inconsistent with the RGB reading
+
+It lists UHDFormer at 27.11 dB /
 0.927 and ERR at 27.57 dB / 0.932. This reproduction measures 0.92218 at 28.82 dB, which would put
 RetinexDual *below* UHDFormer on SSIM while being 1.7 dB better on PSNR. So the published column is
 probably not per-channel RGB. But it is not luma either, which would read 0.947 here. That is the
 part I cannot resolve.
+
+## The colour space is pinned by PSNR
+
+Everything above works from the SSIM side. But **PSNR reproduced**, and that is itself evidence. Any
+protocol choice that would move both metrics is already excluded by that agreement, so the
+explanation has to be something that moves SSIM while leaving PSNR alone.
+
+Measuring PSNR under the same conventions, over all 150 images:
+
+| protocol | PSNR (dB) | vs paper 28.79 |
+|---|---|---|
+| `psnr_y_border1` | 31.4084 | +2.6184 |
+| `psnr_y` (luma) | 31.4077 | +2.6177 |
+| `psnr_rgb` (all three channels) | **28.8191** | **+0.0291** |
+
+Luma PSNR runs **2.62 dB above** RGB. Had the paper computed PSNR on luma it would report about
+31.4, not 28.79. **So the published PSNR is per-channel RGB.** That is not an inference from
+convention, it is forced by a 2.6 dB separation against a 0.03 dB agreement.
+
+Putting the two together:
+
+- The paper computed PSNR in RGB. In RGB, this reproduction measures SSIM **0.92218**.
+- Had it computed SSIM on luma instead, that would read **0.94656** here.
+- It reports **0.934**, which is neither.
+
+**No single colour-space choice produces both published numbers.** RGB explains the PSNR and
+undershoots the SSIM by 0.012. Luma would explain neither, being 2.6 dB out on PSNR and 0.013 over
+on SSIM. Mixing the two, RGB for PSNR and luma for SSIM, is unusual but not unheard of, and it still
+does not land on 0.934.
+
+This also disposes of one candidate I had left open. A downsampling step before scoring would move
+PSNR as well, and PSNR agrees to 0.03 dB, so there is no such step.
+
+## What this rules out, and what remains open
 
 What this rules out with reasonable confidence: the colour space, the border handling, the uint8
 rounding, the SSIM constants, and ERR's implementation specifically. What it cannot rule out from

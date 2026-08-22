@@ -75,6 +75,11 @@ an empty band 0.0234 wide between them. **The published 0.934 sits 46% of the wa
 near neither.** ERR's protocol specifically, which upstream credits for this benchmark, lands within
 0.0002 of plain luma.
 
+There is also a constraint from the PSNR side, which is the sharpest thing in that document. Luma
+PSNR measures 31.4077 here against 28.8191 for RGB, a 2.62 dB separation, so the paper's 28.79
+pins its PSNR to per-channel RGB. In RGB, SSIM measures 0.92218. In luma it would measure 0.94656.
+**No single colour-space choice produces both published numbers.**
+
 So the colour space, the border handling, the uint8 rounding, the SSIM constants and ERR's
 implementation are all ruled out. What produced 0.934 is not any member of either family, and I
 could not find it. **This is the one question I would put to the authors.** I am not claiming the
