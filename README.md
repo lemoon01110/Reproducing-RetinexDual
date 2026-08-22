@@ -404,9 +404,12 @@ working set is a fixed function of input size.
 (4,747,035 parameters) plus optimiser-free buffers and CUDA context, so the constant term is what
 sits on the card before any pixel arrives. The slope is what each megapixel costs.
 
-The same constant was measured independently on a different GPU, an 8 GB RTX 5070 Laptop at compute
-capability 12.0, at 1.31 GiB per Mpix. Two cards, two architectures, same law, so this is a property
-of the model rather than of one machine.
+The same constant was measured on a different GPU during earlier work on this model, an 8 GB RTX
+5070 Laptop at compute capability 12.0, also at about 1.31 GiB per Mpix. Two cards and two
+architectures agreeing suggests this is a property of the model rather than of one machine.
+**That second measurement is not reproducible from this repository**, since it predates it and the
+machine is not the one used here, so treat it as supporting context rather than as one of the
+committed results.
 
 `scripts/check_report.py --scaling` refits this line from the artifacts on every CI run and fails if
 linearity breaks, so a future torch release that changes allocation behaviour cannot quietly
@@ -417,10 +420,14 @@ falsify the claim.
 The working set at 4K is 10.94 GiB, but the allocator reserves far more than it allocates, and
 reserved is what decides whether the run fits. **One environment variable moves the answer by 8 GiB:**
 
-| | reserved at 3840x2176 | ratio to working set | smallest card |
+| | reserved at 3840x2176 | ratio to working set | smallest card (derived) |
 |---|---|---|---|
 | default allocator | 19.67 GiB | 1.80x | 24 GB |
 | `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` | **11.64 GiB** | **1.06x** | **16 GB** |
+
+The reserved figures are measured. **The smallest-card column is derived from them**, by comparing
+against usable capacity, and is not a measurement: the only card tested here is a 24 GB 4090. A
+16 GB card should hold 11.64 GiB comfortably, but I have not run it.
 
 Both rows measured with `cudnn.benchmark` off, so the only variable is the allocator. With benchmark
 on, as the reproduction actually runs, the default allocator reserves 19.54 GiB, which is within
@@ -436,8 +443,9 @@ within 6% of allocated across the whole sweep. **Whole-image 4K inference theref
 card**, which the earlier "about 20 GiB" figure in this report wrongly ruled out. A 12 GB card is
 marginal at 11.64 GiB reserved and is not something I have tested.
 
-Smaller inputs, with expandable segments: 2560x1408 needs 5.04 GiB reserved, 1920x1088 needs 3.11,
-and 1280x768 needs 1.41. So an 8 GB card handles everything up to about 3.6 Mpix.
+Smaller inputs, with expandable segments, all measured: 2560x1408 reserves 5.04 GiB, 1920x1088
+reserves 3.11, and 1280x768 reserves 1.41. From those, an 8 GB card should handle everything up to
+about 3.6 Mpix, which is again a derivation rather than a measurement.
 
 ### Where it stops working
 
@@ -591,9 +599,10 @@ by whether the claim is a property of the model or of the machine it ran on.
 | The metric-divisor bug | **yes** | pure logic in the released script |
 | Checkpoint and code revision skew | **yes** | property of the released files |
 | Nondeterminism, and RNG replay being bit-identical | **yes** | property of the code path |
-| Memory law, 1.305 GiB per Mpix | **yes** | measured on two GPUs, two architectures |
+| Memory law, 1.305 GiB per Mpix | **yes** | 19 points over a 17x range at R2 = 1.000000. A second GPU agreed, but that measurement is not in this repository |
 | Latency, 1347.73 ms at 4K | **no** | RTX 4090 at 2700 MHz. Expect this to scale with the card |
-| The 8 GiB allocator saving | **partly** | the mechanism is general, the size of the saving depends on how the working set lands relative to segment boundaries |
+| The 8 GiB allocator saving | **partly** | the mechanism is general, the size depends on how the working set lands relative to segment boundaries |
+| Smallest card figures, 16 GB and 8 GB | **derived, not measured** | computed from measured reserved memory. Only a 24 GB card was tested |
 | The ceiling near 17 Mpix | **no** | this is 24 GB divided by the memory law. Use the law with your own capacity |
 
 The determinism *verdict* travels. The determinism *max delta* does not even reproduce on the same
