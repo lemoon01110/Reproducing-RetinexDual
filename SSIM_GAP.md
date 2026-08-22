@@ -154,6 +154,16 @@ pairing or preprocessing bug looks like.
 Reproduce with `python scripts/test_aggregation.py`, which needs no GPU and reads the committed
 per-image CSV.
 
+### Are the implementations themselves right
+
+Everything above depends on my SSIM code being correct. If `ssim_matlab` were subtly wrong the
+clustering would be an artifact of this repository rather than a fact about SSIM, so
+`scripts/test_metrics.py` pins each implementation against an independent reference and CI runs it.
+The MATLAB-style estimator agrees with scikit-image configured with a matched kernel to **3e-14**,
+the colour transforms reproduce the BT.601 coefficients exactly, and every implementation returns
+exactly 1.0 on identical inputs. The suite was checked against a deliberately corrupted copy to
+confirm it fails rather than passing vacuously.
+
 I record the 0.00006 near-miss because a reader will find it, and because it is a good illustration
 of why a single matching number is not evidence. Test enough aggregations and one will land.
 

@@ -632,6 +632,7 @@ tolerance is made impossible, which confirms the check is not vacuous).
 | [`CITATION.cff`](CITATION.cff) | citation metadata, with the RetinexDual paper listed as the work reproduced |
 | [`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) | scores outputs under nine SSIM and three PSNR conventions |
 | [`scripts/test_aggregation.py`](scripts/test_aggregation.py) | tests whether aggregation choices explain the SSIM gap |
+| [`scripts/test_metrics.py`](scripts/test_metrics.py) | pins the metric implementations against reference implementations |
 | `results/reproduction_seeds.csv` | 5 rows, dataset-level PSNR and SSIM per seed |
 | `results/reproduction_per_image.csv` | 150 rows, per-image mean and standard deviation |
 | [`results/README.md`](results/README.md) | provenance and column meanings for both CSVs |

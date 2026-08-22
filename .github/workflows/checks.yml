@@ -83,6 +83,12 @@ jobs:
         continue-on-error: true
         run: python scripts/verify_defects.py --head
 
+      - name: Metric implementations agree with their references
+        # SSIM_GAP.md's clustering argument is only as good as the code behind
+        # it. Pins ssim_matlab against scikit-image with a matched kernel, and
+        # the colour transforms against the BT.601 definition.
+        run: python scripts/test_metrics.py
+
       - name: Aggregation cannot explain the SSIM gap
         # Reads the committed per-image CSV, no GPU. Fails if some aggregation
         # reproduces BOTH published numbers, which would mean the gap is
