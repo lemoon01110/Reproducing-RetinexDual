@@ -21,7 +21,7 @@ Upstream: [ErrorLogic1211/RetinexDual](https://github.com/ErrorLogic1211/Retinex
 
 ---
 
-## 1. The headline reproduces
+## 1. What reproduces, and what does not
 
 UHD-LL testing set, all 150 pairs at 3840x2160, released `UHD_LL.pth` weights, released inference
 path, RTX 4090.
@@ -44,12 +44,23 @@ The right panel is the useful one. All five seeds sit inside a 0.011 dB band, ro
 is being compared against. The left panel is a reminder that a dataset mean hides a lot: individual
 images span more than 23 dB.
 
-PSNR lands 0.034 dB above the published value, which is well inside what counts as a match. **The
-SSIM gap of 0.012 does not reproduce and I could not explain it.** The most likely cause is a
-protocol difference rather than a model difference, because the repository's own SSIM helper
-averages per-channel SSIM over RGB, and several common implementations do not. I did not confirm
-this, and I am not claiming the paper is wrong. It is an open question and the one thing I would
-ask the authors.
+PSNR lands 0.034 dB above the published value, which is well inside what counts as a match.
+
+**SSIM does not reproduce.** It comes out 0.012 low, which is far outside the 0.00001 run-to-run
+spread, so this is a real difference and not noise.
+
+The leading hypothesis is that it is a difference in how SSIM is defined rather than in what the
+model produced, because **PSNR matches to 0.034 dB on the exact same output images**. A model that
+was genuinely producing worse restorations would be expected to miss on both. "SSIM" also names a
+family rather than one number: the repository's helper averages per-channel SSIM over RGB with a
+MATLAB-style 11x11 Gaussian, while other common choices score luma only, crop a border, or use
+scikit-image's 7x7 uniform default, and these disagree with each other by more than 0.012 routinely.
+
+[`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) tests exactly this by scoring one
+set of model outputs under six conventions. **The result is reported below when that run completes,
+including the outcome where no convention accounts for the gap.** Until then this stays listed as
+unexplained. I am not claiming the paper is wrong, and this is the one question I would put to the
+authors.
 
 Raw data: [`results/reproduction_seeds.csv`](results/reproduction_seeds.csv) (5 rows, one per seed)
 and [`results/reproduction_per_image.csv`](results/reproduction_per_image.csv) (150 rows).
@@ -321,7 +332,14 @@ because a truncated Drive download is the normal failure mode and section 3.2 ex
 turns into a plausible but wrong PSNR rather than an error.
 
 Budget roughly 20 minutes per seed on a 4090. SSIM at 3840x2160 is computed on the CPU and
-dominates the wall clock, not the forward pass.
+dominates the wall clock, not the forward pass. Two flags exist for checking the plumbing before
+committing to the full run, and both label themselves in the output so their results cannot be
+mistaken for a reproduction:
+
+```bash
+python scripts/evaluate.py --repo ~/RetinexDual --data <testing_set> \
+    --seeds 0 --limit 4 --skip-ssim        # a couple of minutes, verifies everything wires up
+```
 
 The two supporting tables regenerate independently:
 

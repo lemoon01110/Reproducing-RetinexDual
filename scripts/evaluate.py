@@ -59,7 +59,7 @@ def build_model(repo, weights, device):
 
 
 def evaluate_one_pass(model, pairs, device, calculate_psnr, calculate_ssim,
-                      img2tensor, tensor2img):
+                      img2tensor, tensor2img, skip_ssim=False):
     from math import isfinite
 
     out_rows = []
@@ -80,8 +80,10 @@ def evaluate_one_pass(model, pairs, device, calculate_psnr, calculate_ssim,
         out_img = tensor2img(out)
 
         psnr = calculate_psnr(out_img, gt)
-        ssim = calculate_ssim(out_img, gt)
-        if not (isfinite(psnr) and isfinite(ssim)):
+        # SSIM at 3840x2160 runs on the CPU and dominates the wall clock, so it is
+        # skippable for a fast PSNR-only check. Its run-to-run spread is 1e-5.
+        ssim = float("nan") if skip_ssim else calculate_ssim(out_img, gt)
+        if not isfinite(psnr) or (not skip_ssim and not isfinite(ssim)):
             raise SystemExit(f"[eval] non-finite metric on {name}")
         out_rows.append((name, psnr, ssim))
 
@@ -121,6 +123,10 @@ def main():
     ap.add_argument("--weights", default=None, help="defaults to <repo>/pretrained_weights/UHD_LL.pth")
     ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4])
     ap.add_argument("--out", default="results")
+    ap.add_argument("--limit", type=int, default=None,
+                    help="evaluate only the first N images, for a quick plumbing check")
+    ap.add_argument("--skip-ssim", action="store_true",
+                    help="PSNR only. Roughly 4x faster, since SSIM at 4K is CPU-bound")
     args = ap.parse_args()
 
     repo = os.path.abspath(os.path.expanduser(args.repo))
@@ -148,6 +154,12 @@ def main():
     print(f"[env] torch {torch.__version__}, {torch.cuda.get_device_name(0)}", flush=True)
 
     pairs = collect_pairs(data)
+    if args.limit:
+        pairs = pairs[:args.limit]
+        print(f"[data] LIMITED to the first {len(pairs)} images. This is a plumbing check, "
+              f"not a reproduction of the reported number.", flush=True)
+    if args.skip_ssim:
+        print("[data] SSIM disabled. The SSIM columns will be empty.", flush=True)
     print(f"[data] {len(pairs)} paired images", flush=True)
 
     model = build_model(repo, weights, device)
@@ -161,19 +173,20 @@ def main():
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
         rows = evaluate_one_pass(model, pairs, device, calculate_psnr, calculate_ssim,
-                                 img2tensor, tensor2img)
+                                 img2tensor, tensor2img, skip_ssim=args.skip_ssim)
         psnr = statistics.mean(r[1] for r in rows)
-        ssim = statistics.mean(r[2] for r in rows)
+        ssim = float("nan") if args.skip_ssim else statistics.mean(r[2] for r in rows)
         seed_rows.append((seed, len(rows), psnr, ssim))
         for name, p, s in rows:
             per_image[name].append((p, s))
-        print(f"[run] seed {seed}: PSNR {psnr:.4f}  SSIM {ssim:.5f}", flush=True)
+        ssim_txt = "skipped" if args.skip_ssim else f"{ssim:.5f}"
+        print(f"[run] seed {seed}: PSNR {psnr:.4f}  SSIM {ssim_txt}", flush=True)
 
     with open(os.path.join(args.out, "reproduction_seeds.csv"), "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["seed", "n_images", "psnr_db", "ssim"])
         for seed, n, p, s in seed_rows:
-            w.writerow([seed, n, f"{p:.6f}", f"{s:.6f}"])
+            w.writerow([seed, n, f"{p:.6f}", "" if args.skip_ssim else f"{s:.6f}"])
 
     with open(os.path.join(args.out, "reproduction_per_image.csv"), "w", newline="") as f:
         w = csv.writer(f)
@@ -183,7 +196,7 @@ def main():
             ps = [v[0] for v in vals]
             w.writerow([name, len(vals), f"{statistics.mean(ps):.6f}",
                         f"{statistics.stdev(ps):.6f}" if len(ps) > 1 else "",
-                        f"{statistics.mean(v[1] for v in vals):.6f}"])
+                        "" if args.skip_ssim else f"{statistics.mean(v[1] for v in vals):.6f}"])
 
     psnrs = [r[2] for r in seed_rows]
     ssims = [r[3] for r in seed_rows]
@@ -198,8 +211,13 @@ def main():
           f"   (range {min(psnrs):.4f} to {max(psnrs):.4f})")
     print(f"  difference       {statistics.mean(psnrs) - 28.79:+.4f} dB")
     print(f"  SSIM reported    0.934")
-    print(f"  SSIM reproduced  {statistics.mean(ssims):.5f}")
-    print(f"  difference       {statistics.mean(ssims) - 0.934:+.4f}")
+    if args.skip_ssim:
+        print(f"  SSIM reproduced  skipped (--skip-ssim)")
+    else:
+        print(f"  SSIM reproduced  {statistics.mean(ssims):.5f}")
+        print(f"  difference       {statistics.mean(ssims) - 0.934:+.4f}")
+    if args.limit:
+        print(f"  NOTE             limited to {seed_rows[0][1]} images, not a reproduction")
     print("=" * 62)
 
     with open(os.path.join(args.out, "reproduction_summary.json"), "w") as f:
@@ -207,7 +225,9 @@ def main():
             "n_seeds": len(seed_rows), "n_images": seed_rows[0][1],
             "psnr_reported": 28.79, "psnr_mean": statistics.mean(psnrs), "psnr_sd": sd,
             "psnr_min": min(psnrs), "psnr_max": max(psnrs),
-            "ssim_reported": 0.934, "ssim_mean": statistics.mean(ssims),
+            "ssim_reported": 0.934,
+            "ssim_mean": None if args.skip_ssim else statistics.mean(ssims),
+            "limited": bool(args.limit), "ssim_skipped": bool(args.skip_ssim),
             "torch": torch.__version__, "gpu": torch.cuda.get_device_name(0),
         }, f, indent=2)
 
