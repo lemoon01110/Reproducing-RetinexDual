@@ -630,7 +630,8 @@ tolerance is made impossible, which confirms the check is not vacuous).
 | [`scripts/verify_defects.py`](scripts/verify_defects.py) | re-tests every claimed defect against the live upstream repository |
 | [`scripts/check_report.py`](scripts/check_report.py) | guards links, prose-vs-artifact numbers, figure provenance, and writing conventions |
 | [`CITATION.cff`](CITATION.cff) | citation metadata, with the RetinexDual paper listed as the work reproduced |
-| [`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) | scores outputs under six SSIM conventions |
+| [`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) | scores outputs under nine SSIM and three PSNR conventions |
+| [`scripts/test_aggregation.py`](scripts/test_aggregation.py) | tests whether aggregation choices explain the SSIM gap |
 | `results/reproduction_seeds.csv` | 5 rows, dataset-level PSNR and SSIM per seed |
 | `results/reproduction_per_image.csv` | 150 rows, per-image mean and standard deviation |
 | [`results/README.md`](results/README.md) | provenance and column meanings for both CSVs |

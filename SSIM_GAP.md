@@ -15,6 +15,7 @@
 - [The result has a shape](#the-result-has-a-shape)
 - [ERR's protocol, the strongest candidate](#errs-protocol-the-strongest-candidate)
 - [The colour space is pinned by PSNR](#the-colour-space-is-pinned-by-psnr)
+- [Aggregation, and a tempting near-miss](#aggregation-and-a-tempting-near-miss)
 - [What this rules out, and what remains open](#what-this-rules-out-and-what-remains-open)
 
 ## The discrepancy
@@ -116,12 +117,55 @@ does not land on 0.934.
 This also disposes of one candidate I had left open. A downsampling step before scoring would move
 PSNR as well, and PSNR agrees to 0.03 dB, so there is no such step.
 
+## Aggregation, and a tempting near-miss
+
+Everything so far asks what SSIM *means*. A separate question is how the 150 per-image scores were
+combined. That matters here because the distribution is badly left-skewed: the mean is 0.92217 but
+the median is 0.93220, because a handful of hard images drag the average down. The worst image
+scores 0.71344.
+
+Several ordinary aggregation choices land close to the published value, and one lands almost exactly
+on it:
+
+| aggregation | SSIM | vs paper | PSNR | vs paper |
+|---|---|---|---|---|
+| all 150 images | 0.92217 | -0.01183 | 28.8199 | +0.0299 |
+| excluding worst 5% by SSIM | 0.92918 | -0.00482 | 29.1412 | +0.3512 |
+| **excluding worst 10% by SSIM** | **0.93394** | **-0.00006** | **29.5636** | **+0.7736** |
+| excluding worst 20% by SSIM | 0.94167 | +0.00767 | 30.0299 | +1.2399 |
+| trimmed 10% each end | 0.92888 | -0.00512 | 29.0954 | +0.3054 |
+| trimmed 20% each end | 0.93176 | -0.00224 | 29.1231 | +0.3331 |
+
+**Excluding the worst 10% of images gives 0.93394 against a published 0.934, a difference of
+0.00006.** That looks like a solved mystery, and it is not one.
+
+The test that settles it is applying each aggregation to *both* metrics, dropping the same images
+from each. The same exclusion that lands SSIM on 0.934 lifts PSNR to 29.56, which is **0.77 dB above
+the published 28.79**, and PSNR reproduces exactly over the full 150. The images dragging SSIM down
+are the same images dragging PSNR down. Pearson correlation between the two over 150 images is
+**0.60**, and all fifteen of the worst-SSIM images also sit below median PSNR. So no exclusion can
+repair one metric without breaking the other.
+
+This is also a check on my own pipeline rather than the paper's. If those low-scoring images were
+being mishandled here, my mean would be wrong and the published figure right. They are not: they
+score badly on both metrics together, which is what genuinely difficult images look like, not what a
+pairing or preprocessing bug looks like.
+
+Reproduce with `python scripts/test_aggregation.py`, which needs no GPU and reads the committed
+per-image CSV.
+
+I record the 0.00006 near-miss because a reader will find it, and because it is a good illustration
+of why a single matching number is not evidence. Test enough aggregations and one will land.
+
 ## What this rules out, and what remains open
 
 What this rules out with reasonable confidence: the colour space, the border handling, the uint8
-rounding, the SSIM constants, and ERR's implementation specifically. What it cannot rule out from
-here: a different evaluation split, a downsampling step before scoring, a checkpoint other than the
-released one, or an implementation I have not thought of.
+rounding, the SSIM constants, and ERR's implementation specifically. Also ruled out, both by the joint PSNR
+constraint: a downsampling step before scoring, and any exclusion, trimming or subset choice.
+
+What remains open: an SSIM implementation not among the nine tested, a checkpoint other than the
+released one, or a test split that differs in a way that happens to leave PSNR unchanged while
+moving SSIM by 0.012. That last one is possible but would be a coincidence.
 
 The checkpoint is worth one note. It holds 4,725,531 parameters, matching the 4.726M the paper
 states, so the released weights do appear to be the ones measured. Together with PSNR agreeing to

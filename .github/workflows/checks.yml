@@ -83,6 +83,12 @@ jobs:
         continue-on-error: true
         run: python scripts/verify_defects.py --head
 
+      - name: Aggregation cannot explain the SSIM gap
+        # Reads the committed per-image CSV, no GPU. Fails if some aggregation
+        # reproduces BOTH published numbers, which would mean the gap is
+        # explained and SSIM_GAP.md needs rewriting rather than defending.
+        run: python scripts/test_aggregation.py
+
       - name: Writing conventions
         # No em dashes, en dashes or semicolons in prose. A deliberate house
         # style for this repository, easy to reintroduce by accident.
