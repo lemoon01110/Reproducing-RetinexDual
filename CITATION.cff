@@ -1,0 +1,54 @@
+cff-version: 1.2.0
+title: "Reproducing RetinexDual: an independent reproduction on UHD-LL"
+message: >-
+  If you refer to this reproduction, please cite it using the metadata below.
+  If you are citing the model itself rather than this reproduction, cite the
+  RetinexDual paper under references, not this repository.
+type: software
+authors:
+  - given-names: Jack
+    family-names: Wu
+    alias: lemoon01110
+repository-code: "https://github.com/lemoon01110/Reproducing-RetinexDual"
+abstract: >-
+  An independent reproduction of RetinexDual (Kishawy, Hussein and Chen, ICPR
+  2026) on the UHD-LL low-light benchmark. The published PSNR reproduces at
+  28.8199 +/- 0.0027 dB over five seeds and 150 images, against 28.79 reported.
+  The published SSIM does not reproduce, coming out 0.0118 low, and testing six
+  SSIM conventions did not account for the gap. The report also documents three
+  undocumented defects that prevent a clean checkout of the released code from
+  running, two further traps that run to completion while returning a wrong
+  number, a revision mismatch between the released checkpoint and the released
+  code, and the unguarded Gumbel sampling that makes default inference
+  nondeterministic.
+keywords:
+  - reproducibility
+  - reproduction study
+  - low-light image enhancement
+  - image restoration
+  - state space models
+  - pytorch
+license: MIT
+references:
+  - type: conference-paper
+    title: >-
+      RetinexDual: Retinex-based Dual Nature Approach for Generalized
+      Ultra-High-Definition Image Restoration
+    authors:
+      - given-names: Mohab
+        family-names: Kishawy
+      - given-names: Ali Abdellatif
+        family-names: Hussein
+      - given-names: Jun
+        family-names: Chen
+    collection-title: >-
+      Proceedings of the 28th International Conference on Pattern Recognition
+      (ICPR)
+    year: 2026
+    month: 8
+    location:
+      name: "Lyon, France"
+    url: "https://arxiv.org/abs/2508.04797"
+    notes: >-
+      The work being reproduced. This repository measures it and does not claim
+      authorship of the method.

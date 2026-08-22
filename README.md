@@ -121,6 +121,12 @@ instead of flat wall. Regenerate with
 
 ![Worst, median and best case: low-light input, reproduction output, ground truth](assets/qualitative.png)
 
+That figure is 2.5 MB and deliberately not compressed further. Quantising it to 256 colours would
+cut it to 1.1 MB at 38.79 dB against the original, which sounds harmless until you notice the figure
+exists to show fidelity differences in the 16 to 40 dB range. Introducing a compression artifact of
+comparable order into the evidence for a PSNR argument invites the reasonable question of whether
+what you are looking at is the model or the encoder. It stays lossless.
+
 The worst case at 16.74 dB is the useful one to look at. It is a fine metallic mesh, and the output
 is a plausible restoration that loses the exact phase of the weave rather than a broken image. That
 is the failure mode you would expect from a hard high-frequency texture, and it is evidence the
@@ -525,7 +531,8 @@ tolerance is made impossible, which confirms the check is not vacuous).
 | [`scripts/measure_footprint.py`](scripts/measure_footprint.py) | regenerates the memory and latency table in section 5 |
 | [`scripts/make_figure.py`](scripts/make_figure.py) | renders the PSNR figure from the committed CSVs |
 | [`scripts/make_qualitative.py`](scripts/make_qualitative.py) | renders the worst/median/best image strip |
-| [`scripts/check_report.py`](scripts/check_report.py) | guards links, prose-vs-CSV numbers, and writing conventions |
+| [`scripts/check_report.py`](scripts/check_report.py) | guards links, prose-vs-artifact numbers, figure provenance, and writing conventions |
+| [`CITATION.cff`](CITATION.cff) | citation metadata, with the RetinexDual paper listed as the work reproduced |
 | [`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) | scores outputs under six SSIM conventions |
 | `results/reproduction_seeds.csv` | 5 rows, dataset-level PSNR and SSIM per seed |
 | `results/reproduction_per_image.csv` | 150 rows, per-image mean and standard deviation |

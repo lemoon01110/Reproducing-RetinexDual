@@ -118,6 +118,8 @@ Before they existed, those tables had no source of truth and went stale repeated
 | `footprint_latency.json` | the latency column in README section 5 | `scripts/measure_footprint.py --mode latency --out` |
 | `footprint_memory.json` | the working-set column in README section 5 | `scripts/measure_footprint.py --mode memory --out` |
 | `ssim_protocols.json` | the SSIM protocol table in README section 1 | `scripts/ssim_protocol_probe.py --out` |
+| `figure_data.json` | ties `assets/reproduction.png` to the CSVs it was drawn from | `scripts/make_figure.py --out-json` |
+| `qualitative_picks.json` | records which images `assets/qualitative.png` shows, and why | `scripts/make_qualitative.py --out-json` |
 
 Two of these reproduce exactly on a re-run and one does not, which is worth knowing before quoting
 them. `ssim_protocols.json` reproduced all three figures to five decimals. `footprint_latency.json`

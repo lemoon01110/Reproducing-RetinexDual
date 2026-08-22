@@ -12,6 +12,7 @@ Usage: python scripts/make_figure.py --results results --out assets/reproduction
 """
 import argparse
 import csv
+import json
 import os
 import statistics as st
 
@@ -36,6 +37,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", default="results")
     ap.add_argument("--out", default="assets/reproduction.png")
+    ap.add_argument("--out-json", default=None,
+                    help="record the values plotted, so a committed figure can be "
+                         "checked against the committed data without re-rendering")
     args = ap.parse_args()
 
     per_image = read_csv(os.path.join(args.results, "reproduction_per_image.csv"))
@@ -86,6 +90,13 @@ def main():
     fig.tight_layout()
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     fig.savefig(args.out, dpi=160, bbox_inches="tight", facecolor="white")
+    if args.out_json:
+        with open(args.out_json, "w") as f:
+            json.dump({"n_images": len(psnrs), "n_seeds": len(seed_psnr),
+                       "psnr_mean": mean_psnr, "psnr_sd": sd_psnr,
+                       "per_image_min": min(psnrs), "per_image_max": max(psnrs),
+                       "seed_psnr": seed_psnr, "paper_psnr": PAPER_PSNR}, f, indent=2)
+        print(f"wrote {args.out_json}")
     print(f"wrote {args.out}")
     print(f"  per-image n={len(psnrs)} range {min(psnrs):.3f} to {max(psnrs):.3f} dB")
     print(f"  per-seed mean {mean_psnr:.4f} +/- {sd_psnr:.4f} dB, reported {PAPER_PSNR}")

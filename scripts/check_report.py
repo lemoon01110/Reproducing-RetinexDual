@@ -216,6 +216,27 @@ def check_tables():
             problems.append(f"ssim_protocols.json is a partial run ({sj['n_images']} images). "
                             f"The published table must come from the full set.")
 
+    # The committed reproduction.png could be stale relative to the CSVs and
+    # nothing would notice, because CI re-renders to a temporary file and throws
+    # it away. Comparing PNG bytes across matplotlib versions is not workable,
+    # so make_figure.py records the values it plotted and those are checked here.
+    fig_p = ROOT / "results" / "figure_data.json"
+    seeds_p = ROOT / "results" / "reproduction_seeds.csv"
+    per_p = ROOT / "results" / "reproduction_per_image.csv"
+    if not fig_p.exists():
+        problems.append("results/figure_data.json missing, so the committed figure "
+                        "cannot be tied to the committed data")
+    elif seeds_p.exists() and per_p.exists():
+        fj = json.loads(fig_p.read_text())
+        live = [float(r["psnr_db"]) for r in csv.DictReader(seeds_p.open())]
+        if [round(v, 6) for v in fj["seed_psnr"]] != [round(v, 6) for v in live]:
+            problems.append("figure_data.json does not match reproduction_seeds.csv, so "
+                            "assets/reproduction.png was rendered from different data than "
+                            "the repository now commits. Re-run scripts/make_figure.py.")
+        if fj["n_images"] != len(list(csv.DictReader(per_p.open()))):
+            problems.append("figure_data.json image count does not match "
+                            "reproduction_per_image.csv")
+
     # The qualitative figure needs a GPU to regenerate, so CI cannot rebuild it.
     # It can still check that the images shown were selected by the stated rule,
     # which is the part a reader would be right to be sceptical about.

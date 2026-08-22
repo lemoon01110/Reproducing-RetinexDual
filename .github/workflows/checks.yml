@@ -69,7 +69,10 @@ jobs:
         # style for this repository, easy to reintroduce by accident.
         run: python scripts/check_report.py --style
 
-      - name: Figure regenerates from the committed data
+      - name: Figure regenerates, and the committed one matches the committed data
+        # Rendering to a temp file only proves the script runs. The check that
+        # matters is figure_data.json against the CSVs, which is in --tables
+        # above and catches a committed PNG left stale after the data changed.
         run: |
           python scripts/make_figure.py --results results --out /tmp/fig.png
           test -s /tmp/fig.png && echo "ok   figure renders"
