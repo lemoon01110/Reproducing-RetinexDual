@@ -99,6 +99,30 @@ def check_structure():
     return not bad
 
 
+def check_inventory():
+    """Every script and artifact must be listed where a reader would look.
+
+    The files table drifted three scripts behind before anyone noticed, and two
+    artifacts were never added to results/README.md, so they existed in the
+    repository but nowhere in the documentation.
+    """
+    bad = []
+    readme = (ROOT / "README.md").read_text()
+    for f in sorted((ROOT / "scripts").glob("*.py")):
+        if f"scripts/{f.name}" not in readme:
+            bad.append(f"scripts/{f.name} is not listed in README section 8")
+    res_readme = (ROOT / "results" / "README.md").read_text()
+    for f in sorted((ROOT / "results").glob("*")):
+        if f.name == "README.md":
+            continue
+        if f.name not in res_readme:
+            bad.append(f"results/{f.name} is not described in results/README.md")
+    for b in bad:
+        print(f"  FAIL {b}")
+    print(f"inventory: {'FAIL' if bad else 'ok'} ({len(bad)} issues)")
+    return not bad
+
+
 def check_links():
     bad = []
     for name, text in read_docs():
@@ -495,15 +519,18 @@ def main():
     ap.add_argument("--tables", action="store_true")
     ap.add_argument("--scaling", action="store_true")
     ap.add_argument("--structure", action="store_true")
+    ap.add_argument("--inventory", action="store_true")
     args = ap.parse_args()
 
     run_all = not (args.links or args.numbers or args.style or args.tables
-                   or args.scaling or args.structure)
+                   or args.scaling or args.structure or args.inventory)
     ok = True
     if run_all or args.links:
         ok &= check_links()
     if run_all or args.structure:
         ok &= check_structure()
+    if run_all or args.inventory:
+        ok &= check_inventory()
     if run_all or args.numbers:
         ok &= check_numbers()
     if run_all or args.tables:

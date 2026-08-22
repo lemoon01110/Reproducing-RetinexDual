@@ -56,6 +56,11 @@ jobs:
         # half and a heading absorbed into a bullet list. Both are cheap to catch.
         run: python scripts/check_report.py --structure
 
+      - name: Every script and artifact is documented
+        # The files table drifted three scripts behind and two artifacts were
+        # never described anywhere, so they existed but were undiscoverable.
+        run: python scripts/check_report.py --inventory
+
       - name: Internal links resolve
         run: python scripts/check_report.py --links
 

@@ -567,30 +567,57 @@ tolerance is made impossible, which confirms the check is not vacuous).
 
 ## 8. Files
 
+**Documents**
+
 | Path | Contents |
 |---|---|
 | [`ENVIRONMENT.md`](ENVIRONMENT.md) | versions, checksums, provenance, every deviation and why |
-| [`DETERMINISM.md`](DETERMINISM.md) | the nondeterminism audit in full |
-| [`SSIM_GAP.md`](SSIM_GAP.md) | the full SSIM investigation, ten protocols and what they rule out |
+| [`DETERMINISM.md`](DETERMINISM.md) | why default inference is not reproducible, and the two sources of that |
+| [`SSIM_GAP.md`](SSIM_GAP.md) | ten SSIM conventions, three PSNR conventions, and why none explains the gap |
 | [`FOOTPRINT.md`](FOOTPRINT.md) | the memory sweep, the scaling law, the allocator comparison and the ceiling |
+| [`results/README.md`](results/README.md) | provenance and column meanings for every artifact |
+| [`CITATION.cff`](CITATION.cff) | citation metadata, with the RetinexDual paper listed as the work reproduced |
+
+**Running the reproduction**
+
+| Path | Contents |
+|---|---|
 | [`setup_env.sh`](setup_env.sh) | builds the working environment, and verifies the kernels load |
 | [`reproduce.sh`](reproduce.sh) | checksums the weights, checks the data, runs the evaluation |
 | [`scripts/evaluate.py`](scripts/evaluate.py) | the evaluation itself, 5 seeds over 150 images |
 | [`scripts/check_data.py`](scripts/check_data.py) | dataset pairing, dimensions and decodability |
+
+**Measuring**
+
+| Path | Contents |
+|---|---|
 | [`scripts/determinism_audit.py`](scripts/determinism_audit.py) | regenerates the table in section 4.2 |
-| [`scripts/measure_footprint.py`](scripts/measure_footprint.py) | regenerates the memory and latency table in section 5 |
+| [`scripts/measure_footprint.py`](scripts/measure_footprint.py) | the memory and latency sweep |
+| [`scripts/find_ceiling.py`](scripts/find_ceiling.py) | walks the OOM boundary in 128-row steps |
+| [`scripts/measure_scan.py`](scripts/measure_scan.py) | times the selective scan at the largest sequence length |
+| [`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) | scores outputs under ten SSIM and three PSNR conventions |
+
+**Verifying**
+
+| Path | Contents |
+|---|---|
+| [`scripts/verify_defects.py`](scripts/verify_defects.py) | re-tests every claimed defect against live upstream |
+| [`scripts/verify_checkpoint.py`](scripts/verify_checkpoint.py) | audits the checkpoint, and proves the missing tensors inert |
+| [`scripts/verify_glibc.py`](scripts/verify_glibc.py) | reads each wheel's ELF symbols to confirm its glibc floor |
+| [`scripts/test_metrics.py`](scripts/test_metrics.py) | pins the metric implementations against references |
+| [`scripts/test_aggregation.py`](scripts/test_aggregation.py) | tests whether aggregation explains the SSIM gap |
+| [`scripts/check_report.py`](scripts/check_report.py) | guards links, structure, prose-vs-artifact numbers and conventions |
+
+**Figures**
+
+| Path | Contents |
+|---|---|
 | [`scripts/make_figure.py`](scripts/make_figure.py) | renders the PSNR figure from the committed CSVs |
 | [`scripts/make_qualitative.py`](scripts/make_qualitative.py) | renders the worst/median/best image strip |
-| [`scripts/verify_defects.py`](scripts/verify_defects.py) | re-tests every claimed defect against the live upstream repository |
-| [`scripts/check_report.py`](scripts/check_report.py) | guards links, prose-vs-artifact numbers, figure provenance, and writing conventions |
-| [`CITATION.cff`](CITATION.cff) | citation metadata, with the RetinexDual paper listed as the work reproduced |
-| [`scripts/ssim_protocol_probe.py`](scripts/ssim_protocol_probe.py) | scores outputs under ten SSIM and three PSNR conventions |
-| [`scripts/test_aggregation.py`](scripts/test_aggregation.py) | tests whether aggregation choices explain the SSIM gap |
-| [`scripts/test_metrics.py`](scripts/test_metrics.py) | pins the metric implementations against reference implementations |
-| [`scripts/verify_checkpoint.py`](scripts/verify_checkpoint.py) | audits the checkpoint against the code, and proves the missing tensors inert |
-| `results/reproduction_seeds.csv` | 5 rows, dataset-level PSNR and SSIM per seed |
-| `results/reproduction_per_image.csv` | 150 rows, per-image mean and standard deviation |
-| [`results/README.md`](results/README.md) | provenance and column meanings for both CSVs |
+
+Every artifact under [`results/`](results/) is described in
+[`results/README.md`](results/README.md), including which document it backs and which script
+produces it.
 
 ## Citation
 
